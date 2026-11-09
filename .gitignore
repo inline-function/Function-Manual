@@ -1,0 +1,38 @@
+# Android / Gradle
+.gradle/
+.kotlin/
+build/
+**/build/
+local.properties
+captures/
+.cxx/
+
+# 构建产物
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# JVM 崩溃日志
+hs_err_pid*.log
+replay_pid*.log
+*.log
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 临时 jars（Vico 已从 Maven Central 依赖，无需提交）
+vico_core_classes.jar
+vico_m3_classes.jar
+
+# 签名密钥（绝不提交）
+app/fangshen.jks
+!gradle-wrapper.jar
