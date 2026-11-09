@@ -56,7 +56,7 @@ gradle --no-daemon assembleRelease
 
 ## 相关 wiki
 
-机制说明见本仓库 [Wiki](https://github.com:inline-function/Function-Manual/wiki)：药代动力学引擎、效应引擎、联用预警、药库结构、报告格式。
+机制说明见 [`docs/wiki/`](docs/wiki/)（GitHub Wiki 开通后将同步至 [github.com/…/wiki](https://github.com:inline-function/Function-Manual/wiki)）：药代动力学引擎、效应引擎、联用预警、预警规则、药库结构、数据格式。
 
 ## 免责声明
 
