@@ -30,6 +30,7 @@ object SubjectiveTagColors {
         "镇痛剂" to 0xFFEF9A9AL,     // 淡红色
         "逆转剂" to 0xFFFFFFFFL,     // 白色
         "欣快剂" to 0xFFD81B60L,       // 品红色
+        "镇吐剂" to 0xFF00BFA5L,       // 青绿色
     )
 
     /** 目录中含义相同但写法不同的标签，归一到内置对照表 */
