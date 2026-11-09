@@ -36,13 +36,14 @@ object InteractionEngine {
         "选择性血清素再摄取抑制剂", "血清素再摄取抑制剂",
         "血清素和正肾素再摄取抑制剂", "血清素受体激动剂",
         "血清素前体", "单胺氧化酶抑制剂", "血清素能镇痛药",
+        "血清素释放剂",  // MDMA、甲卡西酮、苯丙胺类等
     )
     private val SSRI_LIKE_TAGS = setOf(
         "选择性血清素再摄取抑制剂", "血清素再摄取抑制剂",
         "血清素和正肾素再摄取抑制剂",
     )
     private val OPIOID_TAGS = setOf("阿片类受体激动剂")
-    private val GABA_TAGS = setOf("GABA受体激动剂")
+    private val GABA_TAGS = setOf("GABA受体激动剂", "GHB受体激动剂")
     private val STIMULANT_TAGS = setOf("中枢兴奋剂")
     private val NSAID_TAGS = setOf("非甾体抗炎药")
     private val LITHIUM_TAGS = setOf("锂盐")
