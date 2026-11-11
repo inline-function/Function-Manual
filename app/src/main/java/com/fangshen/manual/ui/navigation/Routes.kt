@@ -3,6 +3,7 @@ package com.fangshen.manual.ui.navigation
 object Routes {
     const val HOME = "home"
     const val DRUG_LIST = "drug_list"
+    const val HANDBOOK = "handbook"
     const val DRUG_DETAIL = "drug_detail/{drugId}"
     const val DRUG_EDIT = "drug_edit/{drugId}"
     const val ENTRY_NEW = "entry_new/{type}?uri={uri}&drugId={drugId}"

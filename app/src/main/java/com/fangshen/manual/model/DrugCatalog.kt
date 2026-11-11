@@ -29,6 +29,12 @@ object DrugCatalog {
         inducers: List<String> = emptyList(),
         rules: List<DoseEffectRule> = emptyList(),
         neuros: List<NeuroDelta> = emptyList(),
+        nonlinearity: MichaelisMenten? = null,
+        autoInduction: AutoInduction? = null,
+        saturableAbsorption: SaturableAbsorption? = null,
+        activeMetabolites: List<ActiveMetabolite> = emptyList(),
+        vdLiters: Double? = null,
+        hidden: Boolean = false,
     ) = DrugInfo(
         id = "builtin:$key", name = name, colorArgb = colorArgb,
         tabletDose = tabletDose, doseUnit = doseUnit, managementClass = managementClass,
@@ -36,6 +42,9 @@ object DrugCatalog {
         halfLifeHours = halfLifeHours, bioavailabilityPct = bioavailabilityPct, route = route,
         tmaxHours = tmaxHours, substrates = substrates, inhibitors = inhibitors, inducers = inducers,
         rules = rules, neuros = neuros, isBuiltin = true,
+        nonlinearity = nonlinearity, autoInduction = autoInduction,
+        saturableAbsorption = saturableAbsorption, activeMetabolites = activeMetabolites,
+        vdLiters = vdLiters, hiddenFromCatalog = hidden,
     )
 
     private val fluvoxamine = d(
@@ -238,6 +247,7 @@ object DrugCatalog {
         tmaxHours = 8.0,
         substrates = listOf("CYP2D6", "CYP2C19", "CYP3A4"),
         inhibitors = listOf("CYP2D6", "CYP2C19", "CYP3A4"),
+        activeMetabolites = listOf(ActiveMetabolite(key = "norfluoxetine", fmPct = 100, potency = 0.9)),
         rules = listOf(
             DoseEffectRule(20.toBigDecimal(), "愉悦", 1),
             DoseEffectRule(20.toBigDecimal(), "释然", 1),
@@ -918,6 +928,7 @@ object DrugCatalog {
         subjectiveTags = listOf("抗精神病剂"),
         effectTags = listOf("多巴胺受体拮抗剂"),
         moleculeTag = "苯并异噁唑类", halfLifeHours = 20.0, bioavailabilityPct = 70, route = Route.ORAL,
+        activeMetabolites = listOf(ActiveMetabolite(key = "paliperidone", fmPct = 60, potency = 0.6)),
         tmaxHours = 1.5,
         substrates = listOf("CYP2D6", "CYP3A4"),
         rules = listOf(
@@ -1227,6 +1238,7 @@ object DrugCatalog {
         effectTags = listOf("钠通道阻滞剂"),
         moleculeTag = "亚氨芪类", halfLifeHours = 14.0, bioavailabilityPct = 80, route = Route.ORAL,
         tmaxHours = 5.0,
+        autoInduction = AutoInduction(daysToSteady = 7.0, maxFactor = 2.3),
         substrates = listOf("CYP3A4", "CYP2C9", "CYP1A2"),
         inducers = listOf("CYP3A4", "CYP2C9", "CYP1A2", "CYP2B6", "CYP2C19"),
         rules = listOf(
@@ -1305,6 +1317,7 @@ object DrugCatalog {
         subjectiveTags = listOf("抗焦虑剂", "镇静剂"),
         effectTags = listOf("苯二氮卓类受体激动剂", "GABA受体激动剂"),
         moleculeTag = "苯二氮卓类", halfLifeHours = 40.0, bioavailabilityPct = 94, route = Route.ORAL,
+        activeMetabolites = listOf(ActiveMetabolite(key = "nordazepam", fmPct = 96)),
         tmaxHours = 1.5,
         substrates = listOf("CYP3A4", "CYP2C19"),
         rules = listOf(
@@ -1650,6 +1663,7 @@ object DrugCatalog {
         subjectiveTags = listOf("镇痛剂"),
         effectTags = listOf("阿片类受体激动剂"),
         moleculeTag = "阿片类", halfLifeHours = 3.0, bioavailabilityPct = 60, route = Route.ORAL,
+        activeMetabolites = listOf(ActiveMetabolite(key = "morphine", fmPct = 10)),
         tmaxHours = 1.0,
         substrates = listOf("CYP2D6", "CYP3A4"),
         rules = listOf(
@@ -1679,6 +1693,7 @@ object DrugCatalog {
         moleculeTag = "环己醇类", halfLifeHours = 6.0, bioavailabilityPct = 75, route = Route.ORAL,
         tmaxHours = 2.0,
         substrates = listOf("CYP2D6", "CYP2B6", "CYP3A4"),
+        activeMetabolites = listOf(ActiveMetabolite(key = "odesmethyltramadol", fmPct = 85)),
         rules = listOf(
             DoseEffectRule(50.toBigDecimal(), "镇痛", 1),
             DoseEffectRule(50.toBigDecimal(), "欣快", 1),
@@ -2653,6 +2668,8 @@ object DrugCatalog {
         tmaxHours = 1.0,
         substrates = listOf("CYP2E1"),
         inducers = listOf("CYP2E1"),
+        vdLiters = 35.0,
+        nonlinearity = MichaelisMenten(vmaxMgPerLPerHour = 200.0, kmMgPerL = 30.0),
         rules = listOf(
             DoseEffectRule(5.toBigDecimal(), "欣快", 1),
             DoseEffectRule(5.toBigDecimal(), "愉悦", 1),
@@ -2742,6 +2759,7 @@ object DrugCatalog {
         effectTags = listOf("加巴喷丁类"),
         moleculeTag = "加巴喷丁类", halfLifeHours = 5.5, bioavailabilityPct = 40,
         route = Route.ORAL, tmaxHours = 3.0,
+        saturableAbsorption = SaturableAbsorption(d50Mg = 390.0, fMaxPct = 100),
         rules = listOf(
             DoseEffectRule(300.0.toBigDecimal(), "镇静", 1),
             DoseEffectRule(900.0.toBigDecimal(), "欣快", 1),
@@ -3007,6 +3025,7 @@ object DrugCatalog {
         subjectiveTags = listOf("镇痛剂", "中枢抑制剂"),
         effectTags = listOf("阿片类受体激动剂"),
         moleculeTag = "二乙酰吗啡（半合成阿片）", halfLifeHours = 2.0, bioavailabilityPct = 100,
+        activeMetabolites = listOf(ActiveMetabolite(key = "morphine", fmPct = 100, potency = 1.5)),
         route = Route.IV, tmaxHours = null,
         rules = listOf(
             DoseEffectRule(5.0.toBigDecimal(), "欣快", 1),
@@ -3537,6 +3556,340 @@ object DrugCatalog {
         ),
     )
 
+    // ===== 活性代谢物（隐藏条目：由母药自动生成伪剂量，不在药库/服药列表展示）=====
+    private val norfluoxetine = d(
+        key = "norfluoxetine", name = "去甲氟西汀", colorArgb = 0xFFD4A017,
+        tabletDose = null, doseUnit = DoseUnit.MG, managementClass = ManagementClass.RX,
+        subjectiveTags = listOf("抗抑郁剂", "抗强迫剂"),
+        effectTags = listOf("选择性血清素再摄取抑制剂"),
+        moleculeTag = "三环酮类（去甲基代谢物）", halfLifeHours = 216.0, bioavailabilityPct = 100,
+        route = Route.ORAL, tmaxHours = 8.0,
+        rules = listOf(
+            DoseEffectRule(20.0.toBigDecimal(), "愉悦", 1),
+            DoseEffectRule(20.0.toBigDecimal(), "释然", 1),
+            DoseEffectRule(40.0.toBigDecimal(), "释然", 2),
+            DoseEffectRule(60.0.toBigDecimal(), "焦虑", 1),
+        ),
+        hidden = true,
+    )
+
+    private val nordazepam = d(
+        key = "nordazepam", name = "去甲西泮", colorArgb = 0xFF2E7D32,
+        tabletDose = null, doseUnit = DoseUnit.MG, managementClass = ManagementClass.CONTROLLED_II,
+        subjectiveTags = listOf("抗焦虑剂", "镇静剂"),
+        effectTags = listOf("苯二氮卓类受体激动剂", "GABA受体激动剂"),
+        moleculeTag = "苯二氮卓类（去甲基代谢物）", halfLifeHours = 100.0, bioavailabilityPct = 100,
+        route = Route.ORAL, tmaxHours = 2.0,
+        rules = listOf(
+            DoseEffectRule(2.5.toBigDecimal(), "镇静", 1),
+            DoseEffectRule(5.0.toBigDecimal(), "镇静", 2),
+            DoseEffectRule(10.0.toBigDecimal(), "嗜睡", 1),
+            DoseEffectRule(20.0.toBigDecimal(), "嗜睡", 2),
+        ),
+        hidden = true,
+    )
+
+    private val odesmethyltramadol = d(
+        key = "odesmethyltramadol", name = "去甲曲马多", colorArgb = 0xFFB33A3A,
+        tabletDose = null, doseUnit = DoseUnit.MG, managementClass = ManagementClass.RX,
+        subjectiveTags = listOf("镇痛剂"),
+        effectTags = listOf("阿片类受体激动剂"),
+        moleculeTag = "环己醇类（O-去甲基代谢物）", halfLifeHours = 9.0, bioavailabilityPct = 100,
+        route = Route.ORAL, tmaxHours = 2.0,
+        rules = listOf(
+            DoseEffectRule(25.0.toBigDecimal(), "镇痛", 1),
+            DoseEffectRule(50.0.toBigDecimal(), "镇痛", 2),
+            DoseEffectRule(100.0.toBigDecimal(), "欣快", 1),
+            DoseEffectRule(150.0.toBigDecimal(), "呼吸抑制", 1),
+        ),
+        hidden = true,
+    )
+
+    // ===== 抗癫痫（非线性消除示范：苯妥英）=====
+    private val phenytoin = d(
+        key = "phenytoin", name = "苯妥英", colorArgb = 0xFF3949AB, tabletDose = 100.0.toBigDecimal(),
+        doseUnit = DoseUnit.MG, managementClass = ManagementClass.RX,
+        subjectiveTags = listOf("抗癫痫剂"),
+        effectTags = listOf("钠通道阻滞剂"),
+        moleculeTag = "乙内酰脲类", halfLifeHours = 22.0, bioavailabilityPct = 90, route = Route.ORAL,
+        tmaxHours = 4.0,
+        substrates = listOf("CYP2C9", "CYP2C19"),
+        vdLiters = 50.0,
+        nonlinearity = MichaelisMenten(vmaxMgPerLPerHour = 0.41, kmMgPerL = 4.0),
+        rules = listOf(
+            DoseEffectRule(100.0.toBigDecimal(), "镇静", 1),
+            DoseEffectRule(200.0.toBigDecimal(), "头晕", 1),
+            DoseEffectRule(300.0.toBigDecimal(), "分心", 1),
+            DoseEffectRule(400.0.toBigDecimal(), "谵妄", 1),
+        ),
+    )
+
+    // ===== 抗感染药：本身无精神活性，但参与精神药品的联用预警 =====
+    private val cefoperazone = d(
+        key = "cefoperazone", name = "头孢哌酮", colorArgb = 0xFF80CBC4, tabletDose = null,
+        doseUnit = DoseUnit.MG, managementClass = ManagementClass.RX,
+        subjectiveTags = listOf("抗感染药"),
+        effectTags = listOf("双硫仑样反应药", "头孢类（含 MTT 侧链）"),
+        moleculeTag = "第三代头孢菌素", halfLifeHours = 2.0, bioavailabilityPct = 100,
+        route = Route.IV, tmaxHours = null,
+    )
+
+    private val metronidazole = d(
+        key = "metronidazole", name = "甲硝唑", colorArgb = 0xFF80CBC4, tabletDose = 200.0.toBigDecimal(),
+        doseUnit = DoseUnit.MG, managementClass = ManagementClass.RX,
+        subjectiveTags = listOf("抗感染药"),
+        effectTags = listOf("双硫仑样反应药", "硝基咪唑类"),
+        moleculeTag = "硝基咪唑类", halfLifeHours = 8.0, bioavailabilityPct = 99, route = Route.ORAL,
+        tmaxHours = 2.0,
+        inhibitors = listOf("CYP3A4"),
+    )
+
+    private val clarithromycin = d(
+        key = "clarithromycin", name = "克拉霉素", colorArgb = 0xFF80CBC4, tabletDose = 250.0.toBigDecimal(),
+        doseUnit = DoseUnit.MG, managementClass = ManagementClass.RX,
+        subjectiveTags = listOf("抗感染药"),
+        effectTags = listOf("大环内酯类", "肝药酶抑制剂"),
+        moleculeTag = "大环内酯类", halfLifeHours = 4.0, bioavailabilityPct = 55, route = Route.ORAL,
+        tmaxHours = 3.0,
+        inhibitors = listOf("CYP3A4"),
+    )
+
+    private val erythromycin = d(
+        key = "erythromycin", name = "红霉素", colorArgb = 0xFF80CBC4, tabletDose = 250.0.toBigDecimal(),
+        doseUnit = DoseUnit.MG, managementClass = ManagementClass.RX,
+        subjectiveTags = listOf("抗感染药"),
+        effectTags = listOf("大环内酯类", "肝药酶抑制剂"),
+        moleculeTag = "大环内酯类", halfLifeHours = 1.5, bioavailabilityPct = 35, route = Route.ORAL,
+        tmaxHours = 2.5,
+        inhibitors = listOf("CYP3A4"),
+    )
+
+    private val ciprofloxacin = d(
+        key = "ciprofloxacin", name = "环丙沙星", colorArgb = 0xFF80CBC4, tabletDose = 500.0.toBigDecimal(),
+        doseUnit = DoseUnit.MG, managementClass = ManagementClass.RX,
+        subjectiveTags = listOf("抗感染药"),
+        effectTags = listOf("喹诺酮类", "肝药酶抑制剂"),
+        moleculeTag = "氟喹诺酮类", halfLifeHours = 4.0, bioavailabilityPct = 70, route = Route.ORAL,
+        tmaxHours = 1.5,
+        substrates = listOf("CYP1A2", "CYP3A4"),
+        inhibitors = listOf("CYP1A2"),
+    )
+
+    private val rifampin = d(
+        key = "rifampin", name = "利福平", colorArgb = 0xFF80CBC4, tabletDose = 300.0.toBigDecimal(),
+        doseUnit = DoseUnit.MG, managementClass = ManagementClass.RX,
+        subjectiveTags = listOf("抗感染药"),
+        effectTags = listOf("利福霉素类", "肝药酶诱导剂"),
+        moleculeTag = "利福霉素类", halfLifeHours = 3.0, bioavailabilityPct = 90, route = Route.ORAL,
+        tmaxHours = 2.0,
+        inducers = listOf("CYP3A4", "CYP2C9", "CYP2C19", "CYP2B6", "CYP2C8"),
+    )
+
+    private val linezolid = d(
+        key = "linezolid", name = "利奈唑胺", colorArgb = 0xFF80CBC4, tabletDose = 600.0.toBigDecimal(),
+        doseUnit = DoseUnit.MG, managementClass = ManagementClass.RX,
+        subjectiveTags = listOf("抗感染药"),
+        effectTags = listOf("单胺氧化酶抑制剂", "噁唑烷酮类"),
+        moleculeTag = "噁唑烷酮类", halfLifeHours = 6.0, bioavailabilityPct = 100, route = Route.ORAL,
+        tmaxHours = 1.5,
+        inhibitors = listOf("MAO-A"),
+    )
+
+    private val isoniazid = d(
+        key = "isoniazid", name = "异烟肼", colorArgb = 0xFF80CBC4, tabletDose = 300.0.toBigDecimal(),
+        doseUnit = DoseUnit.MG, managementClass = ManagementClass.RX,
+        subjectiveTags = listOf("抗感染药"),
+        effectTags = listOf("单胺氧化酶抑制剂", "抗结核药"),
+        moleculeTag = "异烟酸肼类", halfLifeHours = 3.0, bioavailabilityPct = 90, route = Route.ORAL,
+        tmaxHours = 1.0,
+        inhibitors = listOf("MAO-A"),
+        rules = listOf(
+            DoseEffectRule(300.0.toBigDecimal(), "肝损伤", 1),
+        ),
+    )
+
+    private val ketoconazole = d(
+        key = "ketoconazole", name = "酮康唑", colorArgb = 0xFF80CBC4, tabletDose = 200.0.toBigDecimal(),
+        doseUnit = DoseUnit.MG, managementClass = ManagementClass.RX,
+        subjectiveTags = listOf("抗感染药"),
+        effectTags = listOf("咪唑类抗真菌药", "肝药酶抑制剂"),
+        moleculeTag = "咪唑类", halfLifeHours = 8.0, bioavailabilityPct = 50, route = Route.ORAL,
+        tmaxHours = 2.0,
+        inhibitors = listOf("CYP3A4"),
+    )
+
+    // ===== 心血管药：不以精神作用为目的，但带来嗜睡/头晕等精神相关副作用 =====
+    private val propranolol = d(
+        key = "propranolol", name = "普萘洛尔", colorArgb = 0xFFB39DDB, tabletDose = 10.0.toBigDecimal(),
+        doseUnit = DoseUnit.MG, managementClass = ManagementClass.RX,
+        subjectiveTags = listOf("心血管药", "抗焦虑剂"),
+        effectTags = listOf("β受体阻滞剂（亲脂）"),
+        moleculeTag = "芳氧丙醇胺类", halfLifeHours = 4.0, bioavailabilityPct = 30, route = Route.ORAL,
+        tmaxHours = 2.0,
+        substrates = listOf("CYP2D6", "CYP1A2"),
+        rules = listOf(
+            DoseEffectRule(10.0.toBigDecimal(), "镇静", 1),
+            DoseEffectRule(10.0.toBigDecimal(), "嗜睡", 1),
+            DoseEffectRule(10.0.toBigDecimal(), "心动过速", -1),
+            DoseEffectRule(40.0.toBigDecimal(), "头晕", 1),
+            DoseEffectRule(80.0.toBigDecimal(), "抑郁", 1),
+        ),
+        neuros = listOf(NeuroDelta(Neurotransmitters.NOREPINEPHRINE, -1)),
+    )
+
+    private val metoprolol = d(
+        key = "metoprolol", name = "美托洛尔", colorArgb = 0xFFB39DDB, tabletDose = 50.0.toBigDecimal(),
+        doseUnit = DoseUnit.MG, managementClass = ManagementClass.RX,
+        subjectiveTags = listOf("心血管药"),
+        effectTags = listOf("β受体阻滞剂"),
+        moleculeTag = "芳氧丙醇胺类", halfLifeHours = 5.0, bioavailabilityPct = 40, route = Route.ORAL,
+        tmaxHours = 1.5,
+        substrates = listOf("CYP2D6"),
+        rules = listOf(
+            DoseEffectRule(50.0.toBigDecimal(), "嗜睡", 1),
+            DoseEffectRule(100.0.toBigDecimal(), "头晕", 1),
+        ),
+    )
+
+    private val bisoprolol = d(
+        key = "bisoprolol", name = "比索洛尔", colorArgb = 0xFFB39DDB, tabletDose = 5.0.toBigDecimal(),
+        doseUnit = DoseUnit.MG, managementClass = ManagementClass.RX,
+        subjectiveTags = listOf("心血管药"),
+        effectTags = listOf("β受体阻滞剂"),
+        moleculeTag = "芳氧丙醇胺类", halfLifeHours = 12.0, bioavailabilityPct = 90, route = Route.ORAL,
+        tmaxHours = 3.0,
+        rules = listOf(
+            DoseEffectRule(5.0.toBigDecimal(), "嗜睡", 1),
+        ),
+    )
+
+    private val clonidine = d(
+        key = "clonidine", name = "可乐定", colorArgb = 0xFFB39DDB, tabletDose = 100.0.toBigDecimal(),
+        doseUnit = DoseUnit.MCG, managementClass = ManagementClass.RX,
+        subjectiveTags = listOf("心血管药", "抗多动剂"),
+        effectTags = listOf("α2受体激动剂"),
+        moleculeTag = "咪唑啉类", halfLifeHours = 12.0, bioavailabilityPct = 95, route = Route.ORAL,
+        tmaxHours = 3.0,
+        rules = listOf(
+            DoseEffectRule(100.0.toBigDecimal(), "嗜睡", 1),
+            DoseEffectRule(100.0.toBigDecimal(), "口干", 1),
+            DoseEffectRule(300.0.toBigDecimal(), "嗜睡", 2),
+        ),
+        neuros = listOf(NeuroDelta(Neurotransmitters.NOREPINEPHRINE, -2)),
+    )
+
+    private val methyldopa = d(
+        key = "methyldopa", name = "甲基多巴", colorArgb = 0xFFB39DDB, tabletDose = 250.0.toBigDecimal(),
+        doseUnit = DoseUnit.MG, managementClass = ManagementClass.RX,
+        subjectiveTags = listOf("心血管药"),
+        effectTags = listOf("α2受体激动剂（前药）"),
+        moleculeTag = "多巴酸衍生物", halfLifeHours = 2.0, bioavailabilityPct = 25, route = Route.ORAL,
+        tmaxHours = 2.0,
+        rules = listOf(
+            DoseEffectRule(250.0.toBigDecimal(), "嗜睡", 1),
+            DoseEffectRule(500.0.toBigDecimal(), "头晕", 1),
+            DoseEffectRule(1000.0.toBigDecimal(), "抑郁", 1),
+        ),
+    )
+
+    private val reserpine = d(
+        key = "reserpine", name = "利血平", colorArgb = 0xFFB39DDB, tabletDose = 250.0.toBigDecimal(),
+        doseUnit = DoseUnit.MCG, managementClass = ManagementClass.RX,
+        subjectiveTags = listOf("心血管药"),
+        effectTags = listOf("单胺耗竭剂"),
+        moleculeTag = "萝芙木生物碱", halfLifeHours = 50.0, bioavailabilityPct = 50, route = Route.ORAL,
+        tmaxHours = 4.0,
+        rules = listOf(
+            DoseEffectRule(250.0.toBigDecimal(), "抑郁", 1),
+            DoseEffectRule(500.0.toBigDecimal(), "抑郁", 2),
+            DoseEffectRule(500.0.toBigDecimal(), "镇静", 1),
+        ),
+        neuros = listOf(
+            NeuroDelta(Neurotransmitters.DOPAMINE, -1),
+            NeuroDelta(Neurotransmitters.SEROTONIN, -1),
+            NeuroDelta(Neurotransmitters.NOREPINEPHRINE, -1),
+        ),
+    )
+
+    private val hydrochlorothiazide = d(
+        key = "hydrochlorothiazide", name = "氢氯噻嗪", colorArgb = 0xFFB39DDB, tabletDose = 25.0.toBigDecimal(),
+        doseUnit = DoseUnit.MG, managementClass = ManagementClass.RX,
+        subjectiveTags = listOf("心血管药"),
+        effectTags = listOf("利尿剂", "噻嗪类"),
+        moleculeTag = "苯并噻二嗪类", halfLifeHours = 8.0, bioavailabilityPct = 70, route = Route.ORAL,
+        tmaxHours = 4.0,
+        rules = listOf(
+            DoseEffectRule(25.0.toBigDecimal(), "头晕", 1),
+        ),
+    )
+
+    private val indapamide = d(
+        key = "indapamide", name = "吲达帕胺", colorArgb = 0xFFB39DDB, tabletDose = 2.5.toBigDecimal(),
+        doseUnit = DoseUnit.MG, managementClass = ManagementClass.RX,
+        subjectiveTags = listOf("心血管药"),
+        effectTags = listOf("利尿剂", "吲哚类"),
+        moleculeTag = "吲哚类利尿剂", halfLifeHours = 18.0, bioavailabilityPct = 93, route = Route.ORAL,
+        tmaxHours = 4.0,
+        rules = listOf(
+            DoseEffectRule(2.5.toBigDecimal(), "头晕", 1),
+        ),
+    )
+
+    private val nifedipine = d(
+        key = "nifedipine", name = "硝苯地平", colorArgb = 0xFFB39DDB, tabletDose = 10.0.toBigDecimal(),
+        doseUnit = DoseUnit.MG, managementClass = ManagementClass.RX,
+        subjectiveTags = listOf("心血管药"),
+        effectTags = listOf("钙通道阻滞剂", "二氢吡啶类"),
+        moleculeTag = "二氢吡啶类", halfLifeHours = 2.0, bioavailabilityPct = 50, route = Route.ORAL,
+        tmaxHours = 1.0,
+        substrates = listOf("CYP3A4"),
+        rules = listOf(
+            DoseEffectRule(10.0.toBigDecimal(), "头晕", 1),
+            DoseEffectRule(10.0.toBigDecimal(), "潮红", 1),
+            DoseEffectRule(20.0.toBigDecimal(), "嗜睡", 1),
+        ),
+    )
+
+    private val amlodipine = d(
+        key = "amlodipine", name = "氨氯地平", colorArgb = 0xFFB39DDB, tabletDose = 5.0.toBigDecimal(),
+        doseUnit = DoseUnit.MG, managementClass = ManagementClass.RX,
+        subjectiveTags = listOf("心血管药"),
+        effectTags = listOf("钙通道阻滞剂", "二氢吡啶类"),
+        moleculeTag = "二氢吡啶类", halfLifeHours = 40.0, bioavailabilityPct = 64, route = Route.ORAL,
+        tmaxHours = 8.0,
+        substrates = listOf("CYP3A4"),
+        rules = listOf(
+            DoseEffectRule(5.0.toBigDecimal(), "头晕", 1),
+            DoseEffectRule(10.0.toBigDecimal(), "嗜睡", 1),
+        ),
+    )
+
+    private val enalapril = d(
+        key = "enalapril", name = "依那普利", colorArgb = 0xFFB39DDB, tabletDose = 10.0.toBigDecimal(),
+        doseUnit = DoseUnit.MG, managementClass = ManagementClass.RX,
+        subjectiveTags = listOf("心血管药"),
+        effectTags = listOf("ACE抑制剂（前药）"),
+        moleculeTag = "羧酸类", halfLifeHours = 11.0, bioavailabilityPct = 40, route = Route.ORAL,
+        tmaxHours = 3.0,
+        rules = listOf(
+            DoseEffectRule(10.0.toBigDecimal(), "头晕", 1),
+            DoseEffectRule(20.0.toBigDecimal(), "嗜睡", 1),
+        ),
+    )
+
+    private val losartan = d(
+        key = "losartan", name = "氯沙坦", colorArgb = 0xFFB39DDB, tabletDose = 50.0.toBigDecimal(),
+        doseUnit = DoseUnit.MG, managementClass = ManagementClass.RX,
+        subjectiveTags = listOf("心血管药"),
+        effectTags = listOf("血管紧张素受体阻滞剂"),
+        moleculeTag = "联苯四唑类", halfLifeHours = 2.0, bioavailabilityPct = 33, route = Route.ORAL,
+        tmaxHours = 1.5,
+        substrates = listOf("CYP2C9", "CYP3A4"),
+        rules = listOf(
+            DoseEffectRule(50.0.toBigDecimal(), "头晕", 1),
+        ),
+    )
+
     /** 全部内置药物 */
     val all: List<DrugInfo> = listOf(
         fluvoxamine, sertraline, paroxetine, alprazolam, ketamine,
@@ -3571,6 +3924,11 @@ object DrugCatalog {
         phenylpiracetam, domperidone, metoclopramide, ondansetron, granisetron,
         aprepitant, naloxone, flumazenil, cyproheptadine, epinephrine,
         physostigmine, atropine, esketamine, citicoline, phosphatidylserine,
+        phenytoin, cefoperazone, metronidazole, clarithromycin, erythromycin,
+        ciprofloxacin, rifampin, linezolid, isoniazid, ketoconazole,
+        propranolol, metoprolol, bisoprolol, clonidine, methyldopa,
+        reserpine, hydrochlorothiazide, indapamide, nifedipine, amlodipine,
+        enalapril, losartan, norfluoxetine, nordazepam, odesmethyltramadol,
     )
 
     private val byKey = all.associateBy { it.builtinKey }

@@ -176,7 +176,7 @@ object EffectCatalog {
         ),
         EffectDef(
             "高血压", EffectUrgency.ACUTE, EffectValence.NEGATIVE,
-            pack = "血清素综合征",
+            inverseOf = "低血压", pack = "血清素综合征",
             description = "这是一种血压异常升高的危险状态。头胀、心悸、后颈发紧随之而来，主观上能感到血液在血管里猛烈冲撞。若不及时干预，可能对心脑血管造成持续伤害。",
         ),
         EffectDef(
@@ -246,6 +246,15 @@ object EffectCatalog {
         EffectDef(
             "肝损伤", EffectUrgency.ACUTE, EffectValence.NEGATIVE,
             description = "这是肝脏代谢负荷过重或毒性损伤时发出的警报。轻度表现为恶心、乏力与食欲下降，重度可出现皮肤巩膜发黄、出血倾向与意识模糊（肝性脑病）。对乙酰氨基酚过量、酒精与某些草药是常见诱因，出现警示信号应立即就医。",
+        ),
+        EffectDef(
+            "低血压", EffectUrgency.ACUTE, EffectValence.NEGATIVE,
+            inverseOf = "高血压",
+            description = "这是血压明显偏低的体验。起立时眼前发黑、双腿发软，需要扶住东西才能站稳；严重时面色苍白、冷汗淋漓，甚至短暂失去意识。降压药过量、联用多种镇静药或对酒精过敏样反应（双硫仑样）时容易出现，改变体位时请放慢动作。",
+        ),
+        EffectDef(
+            "头晕", EffectUrgency.ACUTE, EffectValence.NEGATIVE,
+            description = "这是一种头重脚轻、天旋地转的不稳体验。主观上觉得周围的物体在晃动或自己要摔倒，走路像踩在棉花上，常伴随轻微恶心。它常是降压药、镇静药或停药反应的首发信号，出现时应避免驾驶与高空作业。",
         ),
     )
 

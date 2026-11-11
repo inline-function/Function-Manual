@@ -14,6 +14,7 @@ import androidx.compose.material.icons.rounded.CleaningServices
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.AutoStories
 import androidx.compose.material.icons.rounded.Medication
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.MenuBook
@@ -106,6 +107,13 @@ fun AppDrawer(
                 description = "查看并管理药物目录",
                 icon = Icons.Rounded.Medication,
                 route = Routes.DRUG_LIST,
+                onNavigate = onNavigate,
+            )
+            DrawerItem(
+                label = "手册",
+                description = "效应词典与机制说明",
+                icon = Icons.Rounded.AutoStories,
+                route = Routes.HANDBOOK,
                 onNavigate = onNavigate,
             )
             DrawerItem(

@@ -31,6 +31,9 @@ object SubjectiveTagColors {
         "逆转剂" to 0xFFFFFFFFL,     // 白色
         "欣快剂" to 0xFFD81B60L,       // 品红色
         "镇吐剂" to 0xFF00BFA5L,       // 青绿色
+        "抗癫痫剂" to 0xFF3949ABL,       // 靛蓝色
+        "抗感染药" to 0xFF80CBC4L,       // 薄荷绿
+        "心血管药" to 0xFFB39DDBL,       // 淡紫色
     )
 
     /** 目录中含义相同但写法不同的标签，归一到内置对照表 */

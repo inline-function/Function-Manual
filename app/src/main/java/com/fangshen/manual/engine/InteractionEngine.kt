@@ -46,6 +46,12 @@ object InteractionEngine {
     private val GABA_TAGS = setOf("GABA受体激动剂", "GHB受体激动剂")
     private val STIMULANT_TAGS = setOf("中枢兴奋剂")
     private val NSAID_TAGS = setOf("非甾体抗炎药")
+
+    /** 利尿剂标签（降压药族中的噻嗪类等，降低锂清除率） */
+    private val DIURETIC_TAGS = setOf("利尿剂")
+
+    /** 双硫仑样反应药：头孢哌酮等含 MTT 侧链头孢、甲硝唑等，抑制乙醛脱氢酶 */
+    private val DISULFIRAM_TAGS = setOf("双硫仑样反应药")
     private val LITHIUM_TAGS = setOf("锂盐")
     private val ANTICHOLINERGIC_TAGS = setOf("抗胆碱能剂")
     private val CNS_DEPRESSANT_TAGS = GABA_TAGS + OPIOID_TAGS + setOf("乙醇", "镇静剂")
@@ -77,9 +83,14 @@ object InteractionEngine {
                 "高血压危象（剧烈头痛、血压飙升），属急症。" },
         ),
         MechanismPair(
-            NSAID_TAGS, LITHIUM_TAGS, "锂盐蓄积",
-            { a, b -> "$a 与 $b 联用：非甾体抗炎药降低锂的肾清除率，可使血锂升至中毒水平，" +
+            NSAID_TAGS + DIURETIC_TAGS, LITHIUM_TAGS, "锂盐蓄积",
+            { a, b -> "$a 与 $b 联用：非甾体抗炎药或噻嗪类利尿剂降低锂的肾清除率，可使血锂升至中毒水平，" +
                 "联用期间应监测血锂与肾功能。" },
+        ),
+        MechanismPair(
+            DISULFIRAM_TAGS, ETHANOL_TAGS, "双硫仑样反应",
+            { a, b -> "$a 期间饮酒：乙醛脱氢酶被抑制，乙醛蓄积导致面部潮红、恶心呕吐、心动过速" +
+                "与低血压，严重时危及生命。停药后酶活性恢复需数天，期间仍须禁酒（含藿香正气水等含醇制剂）。" },
         ),
         MechanismPair(
             setOf("血清素能镇痛药"), SSRI_LIKE_TAGS, "5-羟色胺能与癫痫风险",

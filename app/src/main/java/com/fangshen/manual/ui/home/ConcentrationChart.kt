@@ -257,13 +257,24 @@ private fun ChartCanvas(
             } else {
                 seriesDrugs.map { drug ->
                     val past = (dosesByDrug[drug.id] ?: emptyList()).filter { it.second <= now }
-                    xs.map { x ->
-                        past.sumOf { (amount, time) ->
-                            val hoursAgo = (now - time) / 3_600_000.0
-                            // 示意图引擎内部为浮点计算，仅在此处转 Double
-                            com.fangshen.manual.engine.PkEngine.concentrationAt(
-                                drug, amount.toDouble(), hoursAgo + x / 60.0,
+                    if (com.fangshen.manual.engine.PkEngine.needsIntegration(drug)) {
+                        // 非线性药代（容量限制消除/自诱导）：RK4 积分整条序列
+                        val doseList = past.map { (amount, time) ->
+                            com.fangshen.manual.engine.DrugDose(
+                                amount.toDouble(), (now - time) / 3_600_000.0,
                             )
+                        }
+                        com.fangshen.manual.engine.PkEngine.concentrationSeries(
+                            drug, doseList, xs.map { it / 60.0 },
+                        )
+                    } else {
+                        xs.map { x ->
+                            past.sumOf { (amount, time) ->
+                                val hoursAgo = (now - time) / 3_600_000.0
+                                com.fangshen.manual.engine.PkEngine.concentrationAt(
+                                    drug, amount.toDouble(), hoursAgo + x / 60.0,
+                                )
+                            }
                         }
                     }
                 }

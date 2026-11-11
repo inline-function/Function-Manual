@@ -51,6 +51,7 @@ import com.fangshen.manual.ui.profile.ProfileViewModel
 import com.fangshen.manual.ui.settings.ProfileScreen
 import com.fangshen.manual.ui.settings.ScheduleListScreen
 import com.fangshen.manual.ui.entry.ScheduleListViewModel
+import com.fangshen.manual.ui.handbook.HandbookScreen
 
 @Composable
 fun AppNav(application: Application) {
@@ -295,6 +296,9 @@ fun AppNav(application: Application) {
                     onBack = { navController.popBackStack() },
                     viewModel = vm,
                 )
+            }
+            composable(Routes.HANDBOOK) {
+                HandbookScreen(onBack = { navController.popBackStack() })
             }
             composable(Routes.ABOUT) { AboutScreen(onBack = { navController.popBackStack() }) }
             composable(Routes.DISCLAIMER) { DisclaimerScreen(onBack = { navController.popBackStack() }) }

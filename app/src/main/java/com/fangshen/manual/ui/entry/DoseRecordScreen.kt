@@ -74,7 +74,7 @@ fun DoseRecordScreen(
                     color = MaterialTheme.colorScheme.error,
                 )
             }
-            val drugs = state.drugs
+            val drugs = state.drugs.filter { !it.hiddenFromCatalog }
             val selected = drugs.firstOrNull { it.id == state.selectedDrugId }
             Box {
                 var expanded by remember { mutableStateOf(false) }

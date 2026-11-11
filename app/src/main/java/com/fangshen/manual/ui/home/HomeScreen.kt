@@ -165,7 +165,7 @@ fun HomeScreen(
                 // 血药浓度图像：固定在顶部，不随列表滚动，高度为屏幕三分之一
                 ConcentrationChart(
                     drugs = state.drugs,
-                    doses = state.entries,
+                    doses = state.chartDoses,
                     unit = state.chartUnit,
                     onUnitChange = viewModel::setChartUnit,
                     highlightedDrugId = highlightDrugId,

@@ -104,10 +104,12 @@ fun DosingSheet(
                     .padding(bottom = 8.dp),
             )
 
-            val filtered = state.drugs.filter {
-                query.isBlank() || it.name.contains(query.trim(), ignoreCase = true) ||
-                    it.subjectiveTags.any { tag -> tag.contains(query.trim(), ignoreCase = true) }
-            }
+            val filtered = state.drugs
+                .filter { !it.hiddenFromCatalog }
+                .filter {
+                    query.isBlank() || it.name.contains(query.trim(), ignoreCase = true) ||
+                        it.subjectiveTags.any { tag -> tag.contains(query.trim(), ignoreCase = true) }
+                }
 
             // 药物列表
             LazyColumn(

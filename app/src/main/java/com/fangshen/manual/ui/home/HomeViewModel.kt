@@ -24,6 +24,7 @@ import kotlinx.coroutines.launch
 
 data class HomeUiState(
     val entries: List<EntryEntity> = emptyList(),
+    val chartDoses: List<EntryEntity> = emptyList(),
     val drugs: List<DrugInfo> = emptyList(),
     val chartUnit: DoseUnit = DoseUnit.MG,
     val effectResult: EffectEngine.Result = EffectEngine.Result(emptyList(), emptyList()),
@@ -62,16 +63,23 @@ class HomeViewModel(
 
     val uiState = combine(entries, drugs, chartUnit, alertRules, profileFlags) { entryList, drugList, unit, rules, flags ->
         val now = System.currentTimeMillis()
-        val doses = entryList.filter {
+        val baseDoses = entryList.filter {
             it.type == "DOSE" && it.doseAmount != null && it.drugId != null && it.eventTime <= now
         }.mapNotNull { entry ->
             val drug = drugList.firstOrNull { it.id == entry.drugId } ?: return@mapNotNull null
             DrugDoseInfo(drug, entry.doseAmount!!.toBigDecimal(), entry.eventTime)
         }
+        // 活性代谢物：母药每次服药生成一条"伪服药"（该代谢物条目自身的 t½ 与效应规则生效）
+        val doses = baseDoses + baseDoses.flatMap { metabolitePseudoDoses(it, drugList) }
         val result = EffectEngine.compute(doses, now, alertRules = rules, profileFlags = flags)
         val warnings = InteractionEngine.check(result.activeDrugs)
+        // 曲线用剂量：真实 DOSE 条目 + 代谢物伪条目（不写盘、不进入台账时间线）
+        val chartEntries = entryList.filter {
+            it.type == "DOSE" && it.doseAmount != null && it.drugId != null && it.eventTime <= now
+        } + pseudoEntries(baseDoses, drugList)
         HomeUiState(
             entries = entryList,
+            chartDoses = chartEntries,
             drugs = drugList,
             chartUnit = unit,
             effectResult = result,
@@ -149,6 +157,67 @@ class HomeViewModel(
             onDone()
         }
     }
+
+
+
+    /**
+     * 母药剂量 → 活性代谢物伪剂量：等效剂量 = 母药剂量 × fm × 效价，
+     * 时间后移约母药半衰期（形成延迟）。尚未形成（时间晚于 now）的暂不计。
+     */
+    private fun metabolitePseudoDoses(
+        dose: DrugDoseInfo,
+        drugList: List<DrugInfo>,
+    ): List<DrugDoseInfo> = dose.drug.activeMetabolites.mapNotNull { meta ->
+        val entry = drugList.firstOrNull { it.id == "builtin:" + meta.key } ?: return@mapNotNull null
+        val delayHours = meta.formationDelayHours ?: dose.drug.halfLifeHours.coerceIn(0.25, 24.0) * 0.25
+        val time = dose.time + (delayHours * 3_600_000.0).toLong()
+        if (time > System.currentTimeMillis()) return@mapNotNull null
+        val unitFactor = MG_PER_UNIT[dose.drug.doseUnit] ?: 1.0
+        val targetFactor = MG_PER_UNIT[entry.doseUnit] ?: 1.0
+        val amount = dose.amount.toDouble() * (meta.fmPct / 100.0) * meta.potency *
+            unitFactor / targetFactor
+        if (amount <= 0.0) return@mapNotNull null
+        DrugDoseInfo(entry, amount.toBigDecimal().setScale(3, java.math.RoundingMode.HALF_UP), time)
+    }
+
+    /** 与 [metabolitePseudoDoses] 同源，但形态为 EntryEntity，供图表画代谢物曲线 */
+    private fun pseudoEntries(
+        doses: List<DrugDoseInfo>,
+        drugList: List<DrugInfo>,
+    ): List<EntryEntity> = doses.flatMap { dose ->
+        dose.drug.activeMetabolites.mapNotNull { meta ->
+            val entry = drugList.firstOrNull { it.id == "builtin:" + meta.key } ?: return@mapNotNull null
+            val delayHours = meta.formationDelayHours ?: dose.drug.halfLifeHours.coerceIn(0.25, 24.0) * 0.25
+            val time = dose.time + (delayHours * 3_600_000.0).toLong()
+            if (time > System.currentTimeMillis()) return@mapNotNull null
+            val unitFactor = MG_PER_UNIT[dose.drug.doseUnit] ?: 1.0
+            val targetFactor = MG_PER_UNIT[entry.doseUnit] ?: 1.0
+            val amount = dose.amount.toDouble() * (meta.fmPct / 100.0) * meta.potency *
+                unitFactor / targetFactor
+            if (amount <= 0.0) return@mapNotNull null
+            EntryEntity(
+                id = -(dose.time / 1000L).toInt().toLong() * 1000L - drugList.indexOf(entry),
+                type = "DOSE",
+                title = "代谢物·" + entry.name,
+                content = "自动推算",
+                drugId = entry.id,
+                doseAmount = amount.toBigDecimal().setScale(3, java.math.RoundingMode.HALF_UP)
+                    .stripTrailingZeros().toPlainString(),
+                doseUnit = entry.doseUnit.name,
+                route = entry.route.name,
+                attachmentUri = null,
+                durationMs = null,
+                eventTime = time,
+                notify = false,
+                createdAt = time,
+                updatedAt = time,
+            )
+        }
+    }
+
+private val MG_PER_UNIT = mapOf(
+    DoseUnit.MG to 1.0, DoseUnit.G to 1000.0, DoseUnit.MCG to 0.001,
+)
 
     /** 删除一条用药记录 */
     fun deleteEntry(entry: EntryEntity, onDone: () -> Unit = {}) {

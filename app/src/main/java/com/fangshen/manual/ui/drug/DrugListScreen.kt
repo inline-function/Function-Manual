@@ -234,8 +234,10 @@ private data class TagGroup(
 )
 
 private fun groupByFirstTag(drugs: List<DrugInfo>): List<TagGroup> {
+    // 隐藏条目（活性代谢物）不进入药库分组
+    val visible = drugs.filter { !it.hiddenFromCatalog }
     val buckets = LinkedHashMap<String, MutableList<DrugInfo>>()
-    for (drug in drugs) {
+    for (drug in visible) {
         val raw = drug.subjectiveTags.firstOrNull()
         val key = if (raw == null) UNGROUPED else SubjectiveTagColors.canonicalOf(raw)
         buckets.getOrPut(key) { mutableListOf() } += drug

@@ -76,7 +76,7 @@ fun DrugPickerSheet(
                     .padding(horizontal = 16.dp),
             ) {
                 Text(
-                    text = "从药库添加药物（" + catalog.size + " 种）",
+                    text = "从药库添加药物（" + catalog.count { !it.hiddenFromCatalog } + " 种）",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(top = 17.dp, bottom = 8.dp),
@@ -92,12 +92,14 @@ fun DrugPickerSheet(
                         .fillMaxWidth()
                         .padding(bottom = 8.dp),
                 )
-                val filtered = catalog.filter {
+                val filtered = catalog
+                    .filter { !it.hiddenFromCatalog }
+                    .filter {
                     query.isBlank() ||
                         it.name.contains(query.trim(), ignoreCase = true) ||
                         it.subjectiveTags.any { tag -> tag.contains(query.trim(), ignoreCase = true) } ||
                         it.moleculeTag.contains(query.trim(), ignoreCase = true)
-                }
+                    }
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
