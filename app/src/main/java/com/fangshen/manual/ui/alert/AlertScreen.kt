@@ -42,12 +42,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.fangshen.manual.FangShenApplication
+import com.fangshen.manual.model.CustomInteraction
+import com.fangshen.manual.ui.LocalApplication
 import com.fangshen.manual.model.AlertRule
 import com.fangshen.manual.model.DrugCatalog
 import com.fangshen.manual.model.DrugInfo
@@ -57,6 +60,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import androidx.compose.material.icons.rounded.Close
 
 /** 匹配值的展示标签：药物名优先，其余视为标签 */
 fun matcherLabel(value: String, drugNames: List<String>): String =
@@ -189,6 +193,7 @@ fun AlertScreen(
                     }
                 }
             }
+            item { CustomInteractionSection() }
             items(rules, key = { it.id }) { rule ->
                 AlertRuleCard(
                     rule = rule,
@@ -526,4 +531,126 @@ private fun EffectField(
             }
         }
     }
+}
+
+/** 自定义联用配对：药物A × 药物B → 标题+提示，可在预警页增删改 */
+@Composable
+private fun CustomInteractionSection() {
+    val app = LocalApplication.current as FangShenApplication
+    val jsonData by app.contentRepository.state.collectAsState()
+    val pairs = jsonData.customInteractions
+    var editing by remember { mutableStateOf<Pair<String, CustomInteraction>?>(null) }
+    
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+            text = "自定义联用配对",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+        Text(
+            "两条药物（或标签）同时生效时给出预警。条件可填药名或标签名。",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        pairs.forEach { pair ->
+            Card(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(14.dp),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            pair.title.ifBlank { pair.matcherA + " × " + pair.matcherB },
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            pair.message,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = pair.enabled,
+                        onCheckedChange = { v ->
+                            val current = app.contentRepository.state.value.customInteractions
+                            app.contentRepository.saveCustomInteraction(pair.copy(enabled = v))
+                        },
+                    )
+                    IconButton(onClick = { app.contentRepository.deleteCustomInteraction(pair) }) {
+                        Icon(Icons.Rounded.Close, contentDescription = "删除配对")
+                    }
+                }
+            }
+        }
+        TextButton(onClick = { editing = "new" to CustomInteraction("", "", "", "", true) }) {
+            Text("+ 添加联用配对")
+        }
+    }
+
+    editing?.let { (_, pair) ->
+        CustomInteractionDialog(
+            initial = pair,
+            onDismiss = { editing = null },
+            onConfirm = { saved ->
+                app.contentRepository.saveCustomInteraction(saved)
+                editing = null
+            },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CustomInteractionDialog(
+    initial: CustomInteraction,
+    onDismiss: () -> Unit,
+    onConfirm: (CustomInteraction) -> Unit,
+) {
+    var a by remember { mutableStateOf(initial.matcherA) }
+    var b by remember { mutableStateOf(initial.matcherB) }
+    var title by remember { mutableStateOf(initial.title) }
+    var message by remember { mutableStateOf(initial.message) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("联用配对") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = a,
+                    onValueChange = { a = it },
+                    label = { Text("药物/标签 A") },
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    value = b,
+                    onValueChange = { b = it },
+                    label = { Text("药物/标签 B") },
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("标题（如：呼吸抑制）") },
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    value = message,
+                    onValueChange = { message = it },
+                    label = { Text("提示文字") },
+                    minLines = 2,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                if (a.isNotBlank() && b.isNotBlank()) {
+                    onConfirm(CustomInteraction(a.trim(), b.trim(), title.trim(), message.trim(), true))
+                }
+            }) { Text("保存") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } },
+    )
 }

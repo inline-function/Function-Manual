@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -42,6 +43,18 @@ import com.fangshen.manual.model.EffectDef
 import com.fangshen.manual.model.EffectUrgency
 import com.fangshen.manual.model.EffectValence
 import com.fangshen.manual.ui.theme.FangShenTheme
+import com.fangshen.manual.ui.LocalApplication
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.collectAsState
+import com.fangshen.manual.FangShenApplication
+import com.fangshen.manual.model.CustomEffect
+import com.fangshen.manual.model.CustomPack
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material3.FilterChip
+import androidx.compose.runtime.remember
 
 /**
  * 手册：效应词典。按正面/负面/中立列出全部效应定义与其通俗描述，
@@ -57,7 +70,7 @@ fun HandbookScreen(
             containerColor = MaterialTheme.colorScheme.background,
             topBar = {
                 TopAppBar(
-                    title = { Text("手册 · 效应词典", fontWeight = FontWeight.SemiBold) },
+                    title = { Text("手册", fontWeight = FontWeight.SemiBold) },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(Icons.Rounded.ArrowBack, contentDescription = "返回")
@@ -82,6 +95,7 @@ fun HandbookScreen(
                         modifier = Modifier.padding(vertical = 8.dp),
                     )
                 }
+                item { CustomContentSection() }
                 item { SectionTitle("效应包（综合征集合）") }
                 items(EffectCatalog.PACKS.entries.toList(), key = { it.key }) { (pack, members) ->
                     ExpandablePack(pack = pack, members = members)
@@ -136,6 +150,7 @@ private fun ExpandablePack(pack: String, members: List<String>) {
             )
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp),
                 modifier = Modifier.padding(top = 6.dp),
             ) {
                 members.forEach { member ->
@@ -229,4 +244,211 @@ private fun packColor(pack: String): Color = when (pack) {
 private fun urgencyColor(urgency: EffectUrgency): Color = when (urgency) {
     EffectUrgency.ACUTE -> Color(0xFFC62828)
     EffectUrgency.CHRONIC -> Color(0xFF455A64)
+}
+
+/** 自定义效应与效应包的增删改：与内置词典合并显示 */
+@Composable
+private fun CustomContentSection() {
+    val app = LocalApplication.current as FangShenApplication
+    val jsonData by app.contentRepository.state.collectAsState()
+    var editingEffect by remember { mutableStateOf<CustomEffect?>(null) }
+    var editingPack by remember { mutableStateOf<CustomPack?>(null) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        SectionTitle("我的自定义")
+        if (jsonData.customEffects.isEmpty() && jsonData.customPacks.isEmpty()) {
+            Text(
+                "还没有自定义内容。效应和效应包都可以自己定义，会在主页效应流与词典里与内置条目一起出现。",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        jsonData.customEffects.forEach { effect ->
+            Card(
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                    .clickable { editingEffect = effect },
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(12.dp),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(effect.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        if (effect.description.isNotBlank()) {
+                            Text(
+                                effect.description,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    IconButton(onClick = { app.contentRepository.deleteCustomEffect(effect.name) }) {
+                        Icon(Icons.Rounded.Close, contentDescription = "删除自定义效应")
+                    }
+                }
+            }
+        }
+        jsonData.customPacks.forEach { pack ->
+            Card(
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                    .clickable { editingPack = pack },
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(12.dp),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(pack.name + "（效应包）", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            pack.members.joinToString("、"),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    IconButton(onClick = { app.contentRepository.deleteCustomPack(pack.name) }) {
+                        Icon(Icons.Rounded.Close, contentDescription = "删除自定义效应包")
+                    }
+                }
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TextButton(onClick = { editingEffect = CustomEffect("", EffectValence.POSITIVE, false, "") }) {
+                Text("+ 自定义效应")
+            }
+            TextButton(onClick = { editingPack = CustomPack("", emptyList(), "") }) {
+                Text("+ 自定义效应包")
+            }
+        }
+    }
+
+    editingEffect?.let { effect ->
+        CustomEffectDialog(
+            initial = effect,
+            onDismiss = { editingEffect = null },
+            onConfirm = { saved ->
+                if (saved.name.isNotBlank()) app.contentRepository.saveCustomEffect(saved)
+                editingEffect = null
+            },
+        )
+    }
+    editingPack?.let { pack ->
+        CustomPackDialog(
+            initial = pack,
+            onDismiss = { editingPack = null },
+            onConfirm = { saved ->
+                if (saved.name.isNotBlank() && saved.members.isNotEmpty()) app.contentRepository.saveCustomPack(saved)
+                editingPack = null
+            },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CustomEffectDialog(
+    initial: CustomEffect,
+    onDismiss: () -> Unit,
+    onConfirm: (CustomEffect) -> Unit,
+) {
+    var name by remember { mutableStateOf(initial.name) }
+    var description by remember { mutableStateOf(initial.description) }
+    var chronic by remember { mutableStateOf(initial.chronic) }
+    var valence by remember { mutableStateOf(initial.valence) }
+    var inverseOf by remember { mutableStateOf(initial.inverseOf ?: "") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("自定义效应") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("效应名称") },
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("通俗描述") },
+                    minLines = 2,
+                )
+                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Switch(checked = chronic, onCheckedChange = { chronic = it })
+                    Text("慢性效应（长期形成）")
+                }
+                Text("效价", style = MaterialTheme.typography.labelLarge)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    EffectValence.entries.forEach { v ->
+                        FilterChip(
+                            selected = valence == v,
+                            onClick = { valence = v },
+                            label = {
+                                Text(when (v) {
+                                    EffectValence.POSITIVE -> "正面"
+                                    EffectValence.NEGATIVE -> "负面"
+                                    EffectValence.NEUTRAL -> "中立"
+                                })
+                            },
+                        )
+                    }
+                }
+                OutlinedTextField(
+                    value = inverseOf,
+                    onValueChange = { inverseOf = it },
+                    label = { Text("抵消（填效应名，可空）") },
+                    singleLine = true,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                onConfirm(CustomEffect(name.trim(), valence, chronic, description.trim(), inverseOf.ifBlank { null }))
+            }) { Text("保存") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } },
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CustomPackDialog(
+    initial: CustomPack,
+    onDismiss: () -> Unit,
+    onConfirm: (CustomPack) -> Unit,
+) {
+    var name by remember { mutableStateOf(initial.name) }
+    var members by remember { mutableStateOf(initial.members.joinToString("\n")) }
+    var description by remember { mutableStateOf(initial.description) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("自定义效应包") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("效应包名称") },
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    value = members,
+                    onValueChange = { members = it },
+                    label = { Text("成员效应（每行一个）") },
+                    minLines = 3,
+                )
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("通俗描述") },
+                    minLines = 2,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                onConfirm(CustomPack(name.trim(), members.split("\n").map { it.trim() }.filter { it.isNotBlank() }, description.trim()))
+            }) { Text("保存") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } },
+    )
 }

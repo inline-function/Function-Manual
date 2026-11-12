@@ -37,7 +37,111 @@ data class ReportEpisode(
 data class Report(
     val head: ReportHead,
     val body: List<ReportEpisode>,
+    /** v4 片段格式；为空时阅读器降级渲染旧 body */
+    val fragments: List<ReportFragment> = emptyList(),
 )
+
+
+/** 报告正文片段：场景或对话（v4 起新格式，与旧 body 并存） */
+sealed interface ReportFragment {
+    /** 场景片段：时间 + 地点 + 描述 */
+    data class Scene(
+        val time: String,
+        val place: String,
+        val description: String,
+    ) : ReportFragment
+
+    /** 对话片段：首报告人（head.name）的消息靠右，其余人靠左 */
+    data class Dialog(
+        val items: List<DialogItem>,
+    ) : ReportFragment
+}
+
+/** 对话条目：一句话，或 QQ 系统提示式事件（居中、无卡片背景） */
+sealed interface DialogItem {
+    /** 说话人 + 内容 */
+    data class Say(
+        val name: String,
+        val content: String,
+    ) : DialogItem
+
+    /** 居中的事件提示 */
+    data class Event(
+        val content: String,
+    ) : DialogItem
+}
+
+/** 旧式 body 条目（time/scene/text）降级为场景片段 */
+fun ReportEpisode.toSceneFragment(): ReportFragment.Scene =
+    ReportFragment.Scene(time, scene, text)
+
+/** 解析 "fragments" 数组；每个元素 {"type":"scene"|"dialog", ...} */
+fun parseFragments(array: JSONArray): List<ReportFragment> = List(array.length()) { i ->
+    val o = array.optJSONObject(i) ?: return@List ReportFragment.Scene("", "", "")
+    when (o.optString("type", "scene")) {
+        "dialog" -> ReportFragment.Dialog(
+            items = o.optJSONArray("items")?.let { arr ->
+                List(arr.length()) { j ->
+                    val it = arr.optJSONObject(j) ?: return@List DialogItem.Event("")
+                    when (it.optString("kind", "say")) {
+                        "event" -> DialogItem.Event(it.optString("content", "").trim())
+                        else -> DialogItem.Say(it.optString("name", "").trim(), it.optString("content", "").trim())
+                    }
+                }.filter { item ->
+                    when (item) {
+                        is DialogItem.Say -> item.name.isNotEmpty() || item.content.isNotEmpty()
+                        is DialogItem.Event -> item.content.isNotEmpty()
+                    }
+                }
+            } ?: emptyList(),
+        )
+        else -> ReportFragment.Scene(
+            o.optString("time", "").trim(),
+            o.optString("place", "").trim(),
+            o.optString("description", "").trim(),
+        )
+    }
+}.filter { frag ->
+    when (frag) {
+        is ReportFragment.Scene -> frag.time.isNotEmpty() || frag.place.isNotEmpty() || frag.description.isNotEmpty()
+        is ReportFragment.Dialog -> frag.items.isNotEmpty()
+    }
+}
+
+fun fragmentsToJson(fragments: List<ReportFragment>): JSONArray = JSONArray().apply {
+    fragments.forEach { frag ->
+        put(when (frag) {
+            is ReportFragment.Scene -> JSONObject().apply {
+                put("type", "scene")
+                put("time", frag.time)
+                put("place", frag.place)
+                put("description", frag.description)
+            }
+            is ReportFragment.Dialog -> JSONObject().apply {
+                put("type", "dialog")
+                put("items", JSONArray().apply {
+                    frag.items.forEach { item ->
+                        put(when (item) {
+                            is DialogItem.Say -> JSONObject().apply {
+                                put("kind", "say")
+                                put("name", item.name)
+                                put("content", item.content)
+                            }
+                            is DialogItem.Event -> JSONObject().apply {
+                                put("kind", "event")
+                                put("content", item.content)
+                            }
+                        })
+                    }
+                })
+            }
+        })
+    }
+}
+
+/** 报告正文的统一片段视图：新格式优先，旧 body 降级为场景片段 */
+fun Report.flatFragments(): List<ReportFragment> =
+    if (fragments.isNotEmpty()) fragments else body.map { it.toSceneFragment() }
 
 /** 报告者备注是否需要渲染成蓝色可点样式 */
 val ReportCharacter.hasNote: Boolean get() = !note.isNullOrBlank()

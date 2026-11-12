@@ -1,6 +1,8 @@
 package com.fangshen.manual.ui.home
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -30,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -38,6 +41,8 @@ import com.fangshen.manual.core.formatEventTime
 import com.fangshen.manual.data.entity.EntryEntity
 import com.fangshen.manual.model.DoseUnit
 import com.fangshen.manual.model.DrugInfo
+import com.fangshen.manual.FangShenApplication
+import com.fangshen.manual.model.ManagementClass
 import com.fangshen.manual.model.Route
 import java.math.BigDecimal
 
@@ -107,6 +112,25 @@ fun EntryCard(
                                     alpha = arrowAlpha?.value ?: 1f
                                 },
                             )
+                        }
+                        // 精麻标识（设置开启时）：麻醉药品/精神药品/毒品类
+                        val showBadge = entry.type == "DOSE" && drug != null &&
+                            (androidx.compose.ui.platform.LocalContext.current.applicationContext as? FangShenApplication)
+                                ?.contentRepository?.settings?.showPsychotropicBadge == true
+                        if (showBadge) {
+                            val res = when (drug!!.managementClass) {
+                                ManagementClass.NARCOTIC -> com.fangshen.manual.R.drawable.ic_narcotic
+                                ManagementClass.CONTROLLED_I, ManagementClass.CONTROLLED_II,
+                                ManagementClass.ILLICIT -> com.fangshen.manual.R.drawable.ic_psychotropic
+                                else -> 0
+                            }
+                            if (res != 0) {
+                                Image(
+                                    painter = painterResource(res),
+                                    contentDescription = drug.managementClass.label,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
                         }
                     }
                     Text(

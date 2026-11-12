@@ -52,6 +52,10 @@ import com.fangshen.manual.ui.settings.ProfileScreen
 import com.fangshen.manual.ui.settings.ScheduleListScreen
 import com.fangshen.manual.ui.entry.ScheduleListViewModel
 import com.fangshen.manual.ui.handbook.HandbookScreen
+import com.fangshen.manual.ui.settings.SettingsScreen
+import com.fangshen.manual.ui.docs.DocReaderScreen
+import com.fangshen.manual.ui.docs.DocsScreen
+import com.fangshen.manual.ui.stats.StatsScreen
 
 @Composable
 fun AppNav(application: Application) {
@@ -299,6 +303,35 @@ fun AppNav(application: Application) {
             }
             composable(Routes.HANDBOOK) {
                 HandbookScreen(onBack = { navController.popBackStack() })
+            }
+            composable(Routes.STATS) {
+                StatsScreen(
+                    onBack = { navController.popBackStack() },
+                    onNavigate = { route -> navController.navigate(route) },
+                )
+            }
+            composable(Routes.SETTINGS) {
+                SettingsScreen(
+                    onBack = { navController.popBackStack() },
+                    onNavigate = { route -> navController.navigate(route) },
+                )
+            }
+            composable(Routes.DOCUMENTS) {
+                DocsScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenDoc = { id -> navController.navigate(Routes.docReader(id)) },
+                )
+            }
+            composable(
+                route = Routes.DOC_READER,
+                arguments = listOf(navArgument("docId") { type = NavType.StringType }),
+            ) { backStackEntry ->
+                val docId = backStackEntry.arguments?.getString("docId").orEmpty()
+                DocReaderScreen(
+                    docId = docId,
+                    onBack = { navController.popBackStack() },
+                    onOpenDoc = { id -> navController.navigate(Routes.docReader(id)) },
+                )
             }
             composable(Routes.ABOUT) { AboutScreen(onBack = { navController.popBackStack() }) }
             composable(Routes.DISCLAIMER) { DisclaimerScreen(onBack = { navController.popBackStack() }) }

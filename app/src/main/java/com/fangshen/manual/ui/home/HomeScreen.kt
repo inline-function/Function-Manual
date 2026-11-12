@@ -49,6 +49,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 import com.fangshen.manual.core.enzymeArrowsSuffix
@@ -58,6 +59,10 @@ import com.fangshen.manual.engine.EffectEngine
 import com.fangshen.manual.model.EffectSeverity
 import com.fangshen.manual.model.EffectUrgency
 import com.fangshen.manual.model.EffectValence
+import com.fangshen.manual.FangShenApplication
+import com.fangshen.manual.model.effectCategory
+import com.fangshen.manual.model.enabledIn
+import com.fangshen.manual.ui.LocalApplication
 import com.fangshen.manual.ui.components.ConfirmDialog
 import com.fangshen.manual.ui.drawer.AppDrawer
 import com.fangshen.manual.ui.effect.EffectDetailSheet
@@ -72,6 +77,14 @@ fun HomeScreen(
     viewModel: HomeViewModel,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val app = LocalApplication.current as FangShenApplication
+    val jsonData by app.contentRepository.state.collectAsState()
+    val settings = jsonData.settings
+    val filteredEffects = remember(state.activeEffects, settings) {
+        state.activeEffects.filter { group ->
+            effectCategory(group.name, group.displayChronic)?.enabledIn(settings.effectDisplay) != false
+        }
+    }
     // 每分钟刷新一次"当前时刻"，驱动图像重绘（函数图像随实际时间推进）
     val nowTick by produceState(initialValue = System.currentTimeMillis()) {
         while (true) {
@@ -172,6 +185,7 @@ fun HomeScreen(
                     onLegendClick = { id ->
                         highlightDrugId = if (highlightDrugId == id) null else id
                     },
+                    showAddictionCursor = settings.showAddictionCursor,
                     now = if (nowTick > state.now) nowTick else state.now,
                 )
 
@@ -196,7 +210,7 @@ fun HomeScreen(
                     // 效应流式布局：紧跟在图像下方
                     item {
                         EffectPanel(
-                            activeEffects = state.activeEffects,
+                            activeEffects = filteredEffects,
                             onEffectClick = { name -> effectSheetName = name },
                         )
                     }
@@ -356,8 +370,9 @@ private fun EffectChip(
         group.def?.valence == EffectValence.NEGATIVE -> "↓ "
         else -> "+ "
     }
-    // 急性效应闪烁；效应包同样需要闪烁提示
-    val isAcute = group.isPack || group.def?.urgency == EffectUrgency.ACUTE
+    // 急性效应闪烁；效应包同样需要闪烁提示（慢性展示的效应不闪）
+    val isAcute = group.isPack ||
+        (!group.displayChronic && group.def?.urgency == EffectUrgency.ACUTE)
     val blinkAlpha by if (isAcute) {
         rememberInfiniteTransition(label = "effect_blink").animateFloat(
             initialValue = 0.35f,

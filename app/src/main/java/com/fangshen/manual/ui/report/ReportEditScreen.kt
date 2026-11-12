@@ -153,7 +153,7 @@ fun ReportEditScreen(
             )
 
             SectionTitle("正文片段")
-            form.episodes.forEachIndexed { index, row ->
+            form.fragments.forEachIndexed { index, row ->
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -164,51 +164,114 @@ fun ReportEditScreen(
                         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        OutlinedTextField(
-                            value = row.time,
-                            onValueChange = { v -> viewModel.update { f ->
-                                f.copy(episodes = f.episodes.toMutableList().also {
-                                    it[index] = it[index].copy(time = v)
-                                })
-                            } },
-                            label = { Text("时间") },
-                            singleLine = true,
-                            placeholder = { Text("如 06:15") },
+                        Text(
+                            text = (index + 1).toString() + " · " +
+                                if (row is FragmentRow.DialogRow) "对话片段" else "场景片段",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.weight(1f),
                         )
-                        OutlinedTextField(
-                            value = row.scene,
-                            onValueChange = { v -> viewModel.update { f ->
-                                f.copy(episodes = f.episodes.toMutableList().also {
-                                    it[index] = it[index].copy(scene = v)
-                                })
-                            } },
-                            label = { Text("地点/场景") },
-                            singleLine = true,
-                            placeholder = { Text("如 家中的厨房") },
-                            modifier = Modifier.weight(1.4f),
-                        )
-                        IconButton(onClick = { viewModel.removeEpisode(index) }) {
+                        IconButton(onClick = { viewModel.removeFragment(index) }) {
                             Icon(Icons.Rounded.Close, contentDescription = "删除该片段")
                         }
                     }
-                    OutlinedTextField(
-                        value = row.text,
-                        onValueChange = { v -> viewModel.update { f ->
-                            f.copy(episodes = f.episodes.toMutableList().also {
-                                it[index] = it[index].copy(text = v)
-                            })
-                        } },
-                        label = { Text("片段内容") },
-                        modifier = Modifier.fillMaxWidth(),
-                        minLines = 2,
-                    )
+                    when (row) {
+                        is FragmentRow.SceneRow -> {
+                            Row(
+                                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                OutlinedTextField(
+                                    value = row.time,
+                                    onValueChange = { v -> viewModel.updateFragment(index, row.copy(time = v)) },
+                                    label = { Text("时间") },
+                                    singleLine = true,
+                                    placeholder = { Text("如 06:15") },
+                                    modifier = Modifier.weight(1f),
+                                )
+                                OutlinedTextField(
+                                    value = row.place,
+                                    onValueChange = { v -> viewModel.updateFragment(index, row.copy(place = v)) },
+                                    label = { Text("地点/场景") },
+                                    singleLine = true,
+                                    placeholder = { Text("如 家中的厨房") },
+                                    modifier = Modifier.weight(1.4f),
+                                )
+                            }
+                            OutlinedTextField(
+                                value = row.description,
+                                onValueChange = { v -> viewModel.updateFragment(index, row.copy(description = v)) },
+                                label = { Text("场景描述（内联可用 **粗体** *斜体* ~~删除线~~ 与反引号代码）") },
+                                modifier = Modifier.fillMaxWidth(),
+                                minLines = 2,
+                            )
+                        }
+                        is FragmentRow.DialogRow -> {
+                            row.items.forEachIndexed { itemIndex, item ->
+                                when (item) {
+                                    is DialogItemRow.SayRow -> Column(
+                                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                                        modifier = Modifier.fillMaxWidth(),
+                                    ) {
+                                        Row(
+                                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        ) {
+                                            OutlinedTextField(
+                                                value = item.name,
+                                                onValueChange = { v ->
+                                                    viewModel.updateItem(index, itemIndex, item.copy(name = v))
+                                                },
+                                                label = { Text("说话人") },
+                                                singleLine = true,
+                                                modifier = Modifier.weight(1f),
+                                            )
+                                            IconButton(onClick = { viewModel.removeItem(index, itemIndex) }) {
+                                                Icon(Icons.Rounded.Close, contentDescription = "删除该句")
+                                            }
+                                        }
+                                        OutlinedTextField(
+                                            value = item.content,
+                                            onValueChange = { v ->
+                                                viewModel.updateItem(index, itemIndex, item.copy(content = v))
+                                            },
+                                            label = { Text("内容") },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            minLines = 1,
+                                        )
+                                    }
+                                    is DialogItemRow.EventRow -> Row(
+                                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        OutlinedTextField(
+                                            value = item.content,
+                                            onValueChange = { v ->
+                                                viewModel.updateItem(index, itemIndex, item.copy(content = v))
+                                            },
+                                            label = { Text("居中事件（如：她睡着了）") },
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                        IconButton(onClick = { viewModel.removeItem(index, itemIndex) }) {
+                                            Icon(Icons.Rounded.Close, contentDescription = "删除该事件")
+                                        }
+                                    }
+                                }
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                TextButton(onClick = {
+                                    viewModel.addSay(index, form.name.ifBlank { form.characters.firstOrNull()?.name ?: "" })
+                                }) { Text("+ 对话") }
+                                TextButton(onClick = { viewModel.addEvent(index) }) { Text("+ 事件") }
+                            }
+                        }
+                    }
                 }
             }
-            TextButton(onClick = { viewModel.addEpisode() }) {
-                Text("+ 添加片段")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = { viewModel.addSceneFragment() }) { Text("+ 场景片段") }
+                TextButton(onClick = { viewModel.addDialogFragment() }) { Text("+ 对话片段") }
             }
-
             SectionTitle("结语")
             OutlinedTextField(
                 value = form.conclusion,

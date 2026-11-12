@@ -18,10 +18,15 @@ object Routes {
     const val PROFILE = "profile"
     const val ALERTS = "alerts"
     const val DATA_MANAGEMENT = "data_management"
+    const val SETTINGS = "settings"
+    const val STATS = "stats"
+    const val DOCUMENTS = "documents"
+    const val DOC_READER = "doc_reader/{docId}"
     const val ABOUT = "about"
     const val DISCLAIMER = "disclaimer"
 
     fun drugDetail(drugId: String) = "drug_detail/${drugId}"
+    fun docReader(docId: String) = "doc_reader/${docId}"
     fun drugEdit(drugId: String) = "drug_edit/${drugId}"
     fun entryNew(type: String, uri: String? = null, drugId: String? = null): String {
         val params = mutableListOf<String>()

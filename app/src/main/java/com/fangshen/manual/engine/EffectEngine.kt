@@ -1,6 +1,8 @@
 package com.fangshen.manual.engine
 
 import com.fangshen.manual.model.AlertRule
+import com.fangshen.manual.model.EffectUrgency
+import com.fangshen.manual.model.Route
 import com.fangshen.manual.model.DrugInfo
 import com.fangshen.manual.model.EffectCatalog
 import com.fangshen.manual.model.EffectDef
@@ -9,7 +11,13 @@ import com.fangshen.manual.model.matches
 import kotlin.math.abs
 
 /** 单次服药剂量；amount 用 BigDecimal 精确表示 */
-data class DrugDoseInfo(val drug: DrugInfo, val amount: java.math.BigDecimal, val time: Long)
+data class DrugDoseInfo(
+    val drug: DrugInfo,
+    val amount: java.math.BigDecimal,
+    val time: Long,
+    /** 该次给药实际途径（浓度与游标线按此计算） */
+    val route: Route? = null,
+)
 
 /**
  * 效应权重引擎。
@@ -26,6 +34,13 @@ data class DrugDoseInfo(val drug: DrugInfo, val amount: java.math.BigDecimal, va
  */
 object EffectEngine {
 
+    /** 药物剂量单位到内部 mg 的换算 */
+    private fun mgPerUnit(drug: DrugInfo): Double = when (drug.doseUnit) {
+        com.fangshen.manual.model.DoseUnit.MG -> 1.0
+        com.fangshen.manual.model.DoseUnit.G -> 1000.0
+        com.fangshen.manual.model.DoseUnit.MCG -> 0.001
+    }
+
     /** 一个效应组（效应包或独立效应）的计算结果 */
     data class EffectGroup(
         val name: String,
@@ -39,6 +54,8 @@ object EffectEngine {
         val sourceWeights: Map<String, Int> = emptyMap(),
         /** 是否属于效应包的成员、因而不单独展示 */
         val absorbedByPack: Boolean = false,
+        /** 展示用急慢性：同效应急慢都触发时只显示急性（权重已叠加） */
+        val displayChronic: Boolean = false,
     )
 
     data class Result(
@@ -65,6 +82,21 @@ object EffectEngine {
         val weights = mutableMapOf<String, Int>()
         val sources = mutableMapOf<String, MutableSet<String>>()
         val weightBySource = mutableMapOf<String, MutableMap<String, Int>>()
+        // 该效应至少有一条急性规则触发（用于急/慢性去重展示）
+        val hasAcute = mutableSetOf<String>()
+        // 成瘾游标状态（只算声明了成瘾性的药）
+        val addictStates = AddictionEngine.statesAtNow(
+            drugs = doses.map { it.drug }.distinct(),
+            doses = doses.map { d ->
+                DoseRecord(
+                    drugId = d.drug.id,
+                    amountMg = d.amount.toDouble() * mgPerUnit(d.drug),
+                    route = d.route,
+                    time = d.time,
+                )
+            },
+            now = now,
+        )
 
         fun add(effectName: String, weight: Int, source: String) {
             if (weight == 0) return
@@ -89,17 +121,35 @@ object EffectEngine {
                 it.amount > ZERO && it.time <= now &&
                     now - it.time in (halfLifeMs + 1)..(halfLifeMs * 5)
             }.maxOfOrNull { it.amount }
-            val amount = if (recentSum > ZERO) recentSum else (midMax ?: ZERO)
+            var amount = if (recentSum > ZERO) recentSum else (midMax ?: ZERO)
             if (amount > ZERO) {
-                effectiveAmount[drug] = amount
-                activeDrugs += drug
+                // 成瘾游标调制：换算剂量 = 原剂量 × |A−C| / A；浓度贴游标（耐受）→ 趋近 0
+                val st = addictStates[drug.id]
+                if (st != null && st.cursor > 1e-9) {
+                    val ratio = kotlin.math.abs(st.concentration - st.cursor) / st.cursor
+                    amount = amount.multiply(java.math.BigDecimal.valueOf(ratio.toDouble()))
+                    if (st.concentration < 0.5 * st.cursor) {
+                        // 明显低于游标线：戒断反应加权
+                        val w = (((st.cursor - st.concentration) / st.cursor) * 3.0).toInt().coerceAtLeast(1)
+                        add("戒断", w, drug.name)
+                    }
+                }
+                if (amount > ZERO) {
+                    effectiveAmount[drug] = amount
+                    activeDrugs += drug
+                }
+                // 戒断状态下药物仍视为"生效"（用于联用预警），即使换算剂量归零
+                if (amount <= ZERO && st != null) activeDrugs += drug
             }
         }
 
-        // 2. 效应线规则
+        // 2. 效应线规则（阈值按换算后的剂量判断）
         for ((drug, amount) in effectiveAmount) {
             for (rule in drug.rules) {
-                if (amount > rule.threshold) add(rule.effectName, rule.weight, drug.name)
+                if (amount > rule.threshold) {
+                    add(rule.effectName, rule.weight, drug.name)
+                    if (!rule.isChronic) hasAcute += rule.effectName
+                }
             }
         }
 
@@ -190,6 +240,7 @@ object EffectEngine {
                 weight = packWeight,
                 severity = EffectSeverity.fromWeight(packWeight),
                 isPack = true,
+                displayChronic = pack !in hasAcute && (EffectCatalog.def(pack)?.urgency == EffectUrgency.CHRONIC),
                 def = EffectCatalog.def(pack),
                 members = memberGroups,
                 sources = (sources[pack] ?: emptySet()).toList(),
@@ -208,6 +259,7 @@ object EffectEngine {
                 weight = weight,
                 severity = EffectSeverity.fromWeight(weight),
                 isPack = false, // 独立效应：不属于任何活跃效应包的组
+                displayChronic = name !in hasAcute && (def?.urgency == EffectUrgency.CHRONIC),
                 def = def,
                 members = emptyList(),
                 sources = (sources[name] ?: emptySet()).toList(),

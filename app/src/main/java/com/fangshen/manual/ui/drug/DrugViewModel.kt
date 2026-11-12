@@ -176,6 +176,12 @@ data class DrugEditForm(
     val inducers: List<String> = emptyList(),
     val rules: List<DoseRuleRow> = emptyList(),
     val neuros: List<NeuroRow> = emptyList(),
+    // v4 扩展
+    val description: String = "",
+    val routes: List<String> = emptyList(),
+    val addictive: Boolean = false,
+    val addictionRatePerHour: String = "",
+    val toleranceGroup: String = "",
     val error: String? = null,
 )
 
@@ -226,6 +232,11 @@ class DrugEditViewModel(
                         inducers = entity.inducers?.split(",")?.filter { it.isNotBlank() } ?: emptyList(),
                         rules = rules.map { DoseRuleRow(it.threshold, it.effectName, it.weight.toString()) },
                         neuros = neuros.map { NeuroRow(it.neurotransmitter, it.delta.toString()) },
+                        description = entity.description.orEmpty(),
+                        routes = entity.routes?.split(",")?.filter { it.isNotBlank() } ?: emptyList(),
+                        addictive = entity.addictive,
+                        addictionRatePerHour = entity.addictionRatePerHour.toString(),
+                        toleranceGroup = entity.toleranceGroup.orEmpty(),
                     )
                 }
             }
@@ -276,6 +287,11 @@ class DrugEditViewModel(
                 inhibitors = f.inhibitors.joinToString(","),
                 inducers = f.inducers.joinToString(","),
                 createdAt = System.currentTimeMillis(),
+                description = f.description.trim().ifEmpty { null },
+                routes = f.routes.joinToString(","),
+                addictive = f.addictive,
+                addictionRatePerHour = f.addictionRatePerHour.toDoubleOrNull() ?: 0.0,
+                toleranceGroup = f.toleranceGroup.trim().ifEmpty { null },
             )
             val rules = f.rules
                 .filter {

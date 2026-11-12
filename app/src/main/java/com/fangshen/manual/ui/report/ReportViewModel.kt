@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import com.fangshen.manual.FangShenApplication
 import com.fangshen.manual.data.ReportRepository
 import com.fangshen.manual.model.Report
+import com.fangshen.manual.model.flatFragments
 import com.fangshen.manual.model.parseReport
 import com.fangshen.manual.model.reportTemplate
 import org.json.JSONArray
@@ -177,6 +178,38 @@ data class EpisodeRow(
     val text: String = "",
 )
 
+/** 编辑表单中的一段正文片段 */
+sealed interface FragmentRow {
+    data class SceneRow(
+        val time: String = "",
+        val place: String = "",
+        val description: String = "",
+    ) : FragmentRow
+
+    data class DialogRow(
+        val items: List<DialogItemRow> = emptyList(),
+    ) : FragmentRow
+}
+
+sealed interface DialogItemRow {
+    data class SayRow(val name: String = "", val content: String = "") : DialogItemRow
+    data class EventRow(val content: String = "") : DialogItemRow
+}
+
+/** 读取到的片段转成编辑行（旧 body 自动升级为场景片段） */
+private fun List<com.fangshen.manual.model.ReportFragment>.toRows(): List<FragmentRow> = map { frag ->
+    when (frag) {
+        is com.fangshen.manual.model.ReportFragment.Scene -> FragmentRow.SceneRow(frag.time, frag.place, frag.description)
+        is com.fangshen.manual.model.ReportFragment.Dialog -> FragmentRow.DialogRow(
+            frag.items.map { item ->
+                when (item) {
+                    is com.fangshen.manual.model.DialogItem.Say -> DialogItemRow.SayRow(item.name, item.content)
+                    is com.fangshen.manual.model.DialogItem.Event -> DialogItemRow.EventRow(item.content)
+                }
+            },
+        )
+    }
+}
 /** 编辑页表单：结构化编辑 .rp，与药物编辑页风格一致 */
 data class ReportEditForm(
     val name: String = "",
@@ -185,7 +218,7 @@ data class ReportEditForm(
     val characters: List<CharacterRow> = emptyList(),
     val preface: String = "",
     val conclusion: String = "",
-    val episodes: List<EpisodeRow> = emptyList(),
+    val fragments: List<FragmentRow> = emptyList(),
     val error: String? = null,
 )
 
@@ -210,7 +243,7 @@ class ReportEditViewModel(
                     characters = r.head.characters.map { CharacterRow(it.name, it.note.orEmpty()) },
                     preface = r.head.preface,
                     conclusion = r.head.conclusion,
-                    episodes = r.body.map { EpisodeRow(it.time, it.scene, it.text) },
+                    fragments = r.flatFragments().toRows(),
                 )
             }
         }
@@ -226,10 +259,44 @@ class ReportEditViewModel(
         f.copy(characters = f.characters.toMutableList().also { list -> list.removeAt(index) })
     }
 
-    fun addEpisode() = update { it.copy(episodes = it.episodes + EpisodeRow()) }
+    fun addSceneFragment() = update { it.copy(fragments = it.fragments + FragmentRow.SceneRow()) }
 
-    fun removeEpisode(index: Int) = update { f ->
-        f.copy(episodes = f.episodes.toMutableList().also { list -> list.removeAt(index) })
+    fun addDialogFragment() = update { it.copy(fragments = it.fragments + FragmentRow.DialogRow()) }
+
+    fun removeFragment(index: Int) = update { f ->
+        f.copy(fragments = f.fragments.toMutableList().also { list -> list.removeAt(index) })
+    }
+
+    fun updateFragment(index: Int, row: FragmentRow) = update { f ->
+        f.copy(fragments = f.fragments.toMutableList().also { list -> list[index] = row })
+    }
+
+    fun addSay(fragmentIndex: Int, defaultName: String) = update { f ->
+        val frags = f.fragments.toMutableList()
+        val dialog = frags[fragmentIndex] as FragmentRow.DialogRow
+        frags[fragmentIndex] = dialog.copy(items = dialog.items + DialogItemRow.SayRow(name = defaultName))
+        f.copy(fragments = frags)
+    }
+
+    fun addEvent(fragmentIndex: Int) = update { f ->
+        val frags = f.fragments.toMutableList()
+        val dialog = frags[fragmentIndex] as FragmentRow.DialogRow
+        frags[fragmentIndex] = dialog.copy(items = dialog.items + DialogItemRow.EventRow())
+        f.copy(fragments = frags)
+    }
+
+    fun updateItem(fragmentIndex: Int, itemIndex: Int, item: DialogItemRow) = update { f ->
+        val frags = f.fragments.toMutableList()
+        val dialog = frags[fragmentIndex] as FragmentRow.DialogRow
+        frags[fragmentIndex] = dialog.copy(items = dialog.items.toMutableList().also { it[itemIndex] = item })
+        f.copy(fragments = frags)
+    }
+
+    fun removeItem(fragmentIndex: Int, itemIndex: Int) = update { f ->
+        val frags = f.fragments.toMutableList()
+        val dialog = frags[fragmentIndex] as FragmentRow.DialogRow
+        frags[fragmentIndex] = dialog.copy(items = dialog.items.toMutableList().also { it.removeAt(itemIndex) })
+        f.copy(fragments = frags)
     }
 
     /** 保存：把表单序列化为 .rp JSON */
@@ -256,13 +323,33 @@ class ReportEditViewModel(
                     put("preface", f.preface.trim())
                     put("conclusion", f.conclusion.trim())
                 })
+                put("fragments", com.fangshen.manual.model.fragmentsToJson(f.fragments.map { row ->
+                    when (row) {
+                        is FragmentRow.SceneRow -> com.fangshen.manual.model.ReportFragment.Scene(
+                            row.time.trim(), row.place.trim(), row.description.trim(),
+                        )
+                        is FragmentRow.DialogRow -> com.fangshen.manual.model.ReportFragment.Dialog(
+                            row.items.map { item ->
+                                when (item) {
+                                    is DialogItemRow.SayRow -> com.fangshen.manual.model.DialogItem.Say(
+                                        item.name.trim(), item.content.trim(),
+                                    )
+                                    is DialogItemRow.EventRow -> com.fangshen.manual.model.DialogItem.Event(item.content.trim())
+                                }
+                            },
+                        )
+                    }
+                }))
+                // 兼容旧阅读器：场景片段同时写旧 body，对话片段不丢失（新阅读器优先 fragments）
                 put("body", JSONArray().apply {
-                    f.episodes.forEach { e ->
-                        put(JSONObject().apply {
-                            put("time", e.time.trim())
-                            put("scene", e.scene.trim())
-                            put("text", e.text.trim())
-                        })
+                    f.fragments.forEach { row ->
+                        if (row is FragmentRow.SceneRow) {
+                            put(JSONObject().apply {
+                                put("time", row.time.trim())
+                                put("scene", row.place.trim())
+                                put("text", row.description.trim())
+                            })
+                        }
                     }
                 })
             }.toString(4)

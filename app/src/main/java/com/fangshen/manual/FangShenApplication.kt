@@ -7,6 +7,7 @@ import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import com.fangshen.manual.data.AlertRepository
+import com.fangshen.manual.data.ContentRepository
 import com.fangshen.manual.data.AppDatabase
 import com.fangshen.manual.data.DrugRepository
 import com.fangshen.manual.data.EntryRepository
@@ -22,6 +23,8 @@ class FangShenApplication : Application() {
     lateinit var profileRepository: ProfileRepository
         private set
     lateinit var alertRepository: AlertRepository
+        private set
+    lateinit var contentRepository: ContentRepository
         private set
 
     /** 全部数据存放在外部私有目录的 JSON 文件里（getExternalFilesDir/fangshen/data.json） */
@@ -39,6 +42,8 @@ class FangShenApplication : Application() {
         drugRepository = DrugRepository(jsonDataStore)
         profileRepository = ProfileRepository(jsonDataStore)
         alertRepository = AlertRepository(jsonDataStore)
+        contentRepository = ContentRepository(jsonDataStore)
+        contentRepository.applyCustom()
         createNotificationChannel()
     }
 

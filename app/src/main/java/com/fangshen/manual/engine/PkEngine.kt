@@ -1,6 +1,7 @@
 package com.fangshen.manual.engine
 
 import com.fangshen.manual.model.DrugInfo
+import com.fangshen.manual.model.effectiveRoutes
 import com.fangshen.manual.model.DoseUnit
 import com.fangshen.manual.model.Route
 import kotlin.math.abs
@@ -27,9 +28,9 @@ object PkEngine {
         ln(2.0) / halfLifeHours.coerceIn(MIN_HALF_LIFE_H, MAX_HALF_LIFE_H)
 
     /** 吸收速率常数（1/h），由达峰时间反推 */
-    fun absorptionConstant(drug: DrugInfo): Double {
+    fun absorptionConstant(drug: DrugInfo, route: Route = drug.effectiveRoutes().first()): Double {
         if (drug.route == Route.IV || drug.route == Route.IM) return 20.0
-        val t = (drug.tmaxHours ?: defaultTmaxHours(drug.route)).coerceIn(MIN_T_MAX_H, MAX_T_MAX_H)
+        val t = (drug.tmaxHours ?: defaultTmaxHours(route)).coerceIn(MIN_T_MAX_H, MAX_T_MAX_H)
         // 使浓度峰值出现在 t_max 附近：ka ≈ ln(2) / t_max + ke 的近似校正
         return (ln(2.0) / t) + eliminationConstant(drug.halfLifeHours)
     }
@@ -47,11 +48,14 @@ object PkEngine {
     /**
      * 单次给药后 [hoursAfter] 小时的血药浓度（单位/L），不足零返回 0。
      */
-    fun concentrationAt(drug: DrugInfo, doseAmount: Double, hoursAfter: Double): Double {
+    fun concentrationAt(
+        drug: DrugInfo, doseAmount: Double, hoursAfter: Double,
+        route: Route = drug.effectiveRoutes().first(),
+    ): Double {
         if (hoursAfter < 0 || doseAmount <= 0.0) return 0.0
-        val f = (drug.bioavailabilityPct.coerceIn(0, 100)) / 100.0
+        val f = bioavailabilityPct(drug, route) / 100.0
         val ke = eliminationConstant(drug.halfLifeHours)
-        val ka = absorptionConstant(drug)
+        val ka = absorptionConstant(drug, route)
         val denominator = ka - ke
         if (abs(denominator) < 1e-6) return doseAmount * f / VOLUME_OF_DISTRIBUTION_L
         val c = doseAmount * f * ka / (VOLUME_OF_DISTRIBUTION_L * denominator) *
@@ -67,6 +71,10 @@ object PkEngine {
 
     /** 该药的表观分布容积（L）：未声明时用全局默认 50L */
     fun vd(drug: DrugInfo): Double = drug.vdLiters ?: VOLUME_OF_DISTRIBUTION_L
+
+    /** 该途径下的生物利用度：静注视为 100%，其余按药物声明值 */
+    fun bioavailabilityPct(drug: DrugInfo, route: Route = drug.effectiveRoutes().first()): Int =
+        if (route == Route.IV) 100 else drug.bioavailabilityPct.coerceIn(0, 100)
 
     /** 是否需要数值积分：只要声明非线性消除或自诱导就走积分路径 */
     fun needsIntegration(drug: DrugInfo): Boolean =
@@ -106,7 +114,10 @@ object PkEngine {
         return sim.run()
     }
 
-    private data class Event(val t: Double, val mg: Double)
+    private data class Event(
+        val t: Double, val mg: Double,
+        val ka: Double, val f: Double, val injected: Boolean,
+    )
 
     /** 非线性药物的数值积分器：状态 (aGut 吸收室, aC 中央室)，RK4 步进 */
     private class NonlinearSim(
@@ -117,24 +128,45 @@ object PkEngine {
         private val mg = mgFactor(drug.doseUnit)
         private val vd = vd(drug)
         private val ke0 = eliminationConstant(drug.halfLifeHours)
-        private val ka = absorptionConstant(drug)
         private val mm = drug.nonlinearity
         private val ind = drug.autoInduction
-        private val injected = drug.route == Route.IV || drug.route == Route.IM
 
         private val firstDoseHoursAgo = doses.maxOfOrNull { it.hoursAgoAtNow } ?: 0.0
         private val tStart = minOf(xsHours.minOrNull() ?: 0.0, -firstDoseHoursAgo)
         private val tEnd = xsHours.maxOrNull() ?: 0.0
-        private val pending = doses.map { Event(-it.hoursAgoAtNow, it.amount * mg) }
+        private val defRoute = drug.effectiveRoutes().first()
+
+        /** 声明吸收饱和时按饱和曲线取 F（忽略声明 F）；否则按途径的声明 F */
+        private fun doseFraction(route: Route, doseMg: Double): Double {
+            val sat = drug.saturableAbsorption
+            if (sat != null) {
+                val fMax = sat.fMaxPct.coerceIn(0, 100) / 100.0
+                return fMax * sat.d50Mg / (sat.d50Mg + doseMg)
+            }
+            return bioavailabilityPct(drug, route) / 100.0
+        }
+
+        private data class Event(val t: Double, val mg: Double, val ka: Double, val injected: Boolean)
+
+        private val pending = doses.map {
+            val r = it.route ?: defRoute
+            Event(
+                t = -it.hoursAgoAtNow, mg = it.amount * mg,
+                ka = absorptionConstant(drug, r),
+                injected = r == Route.IV || r == Route.IM,
+            )
+        }
             .filter { it.mg > 0.0 }.sortedBy { it.t }.toMutableList()
 
         private var aGut = 0.0
         private var aC = 0.0
-        private val samples = HashMap<Double, Double>(xsHours.size)
+        private var kaNow = pending.firstOrNull()?.ka ?: absorptionConstant(drug, defRoute)
+        /** 积分轨迹（t, 血药浓度），结束后对 xs 线性插值 */
+        private val trail = ArrayList<DoubleArray>(4096)
 
         fun run(): List<Double> {
             preState()
-            sample()
+            record(tStart)
             var t = tStart
             val h = 0.1
             while (t < tEnd - 1e-9) {
@@ -145,33 +177,53 @@ object PkEngine {
                 val ev = pending.firstOrNull()
                 if (ev != null && abs(ev.t - t) < 1e-9) {
                     pending.removeAt(0)
-                    if (injected) aC += ev.mg else aGut += ev.mg * bioavailabilityFraction(drug, ev.mg)
+                    kaNow = ev.ka
+                    if (ev.injected) {
+                        aC += ev.mg
+                    } else {
+                        aGut += ev.mg * doseFraction(defRoute, ev.mg)
+                    }
                 }
-                sample()
+                record(t)
             }
-            return xsHours.map { x -> samples[x] ?: 0.0 }
+            return xsHours.map { x -> interpolateTrail(x) }
+        }
+
+        private fun record(t: Double) {
+            trail.add(doubleArrayOf(t, aC / vd / mg))
+        }
+
+        /** 对采样点 x（相对现在，过去为负）在轨迹上线性插值；越界取端点 */
+        private fun interpolateTrail(x: Double): Double {
+            if (trail.isEmpty()) return 0.0
+            var lo = 0
+            var hi = trail.size - 1
+            if (x <= trail[lo][0]) return trail[lo][1]
+            if (x >= trail[hi][0]) return trail[hi][1]
+            while (hi - lo > 1) {
+                val mid = (lo + hi) / 2
+                if (trail[mid][0] <= x) lo = mid else hi = mid
+            }
+            val t0 = trail[lo][0]; val v0 = trail[lo][1]
+            val t1 = trail[hi][0]; val v1 = trail[hi][1]
+            if (t1 - t0 < 1e-12) return v0
+            return v0 + (v1 - v0) * (x - t0) / (t1 - t0)
         }
 
         /** 早于窗口起点的剂量残留：近似按线性衰减折算初始状态 */
+        /** 早于窗口起点的剂量残留：近似按线性衰减折算初始状态 */
         private fun preState() {
-            for (e in pending) {
+            for (e in pending.toList()) {
                 if (e.t >= tStart) break
                 val elapsed = tStart - e.t
-                if (injected) {
+                if (e.injected) {
                     aC += e.mg * exp(-ke0 * elapsed)
                 } else {
-                    val total = e.mg * bioavailabilityFraction(drug, e.mg)
-                    val remainGut = total * exp(-ka * elapsed)
+                    val total = e.mg * doseFraction(defRoute, e.mg)
+                    val remainGut = total * exp(-e.ka * elapsed)
                     aGut += remainGut
                     aC += (total - remainGut) * exp(-ke0 * elapsed)
                 }
-            }
-        }
-
-        private fun sample() {
-            // 状态写入最近的采样点
-            xsHours.forEach { x ->
-                samples.putIfAbsent(x, aC / vd / mg)
             }
         }
 
@@ -182,10 +234,10 @@ object PkEngine {
             return 1.0 + (ind.maxFactor - 1.0) * (1.0 - exp(-days / ind.daysToSteady))
         }
 
-        private fun gutDeriv(g: Double) = if (injected) 0.0 else -ka * g
+        private fun gutDeriv(g: Double) = -kaNow * g
 
         private fun centralDeriv(g: Double, c: Double, t: Double): Double {
-            val input = if (injected) 0.0 else ka * g
+            val input = kaNow * g
             return if (mm != null) {
                 val conc = c / vd
                 input - vd * mm.vmaxMgPerLPerHour * conc / (mm.kmMgPerL + conc)
@@ -209,4 +261,4 @@ object PkEngine {
 }
 
 /** 一次给药：[amount] 为剂量，[hoursAgoAtNow] 为该次给药距现在的小时数（过去为正） */
-data class DrugDose(val amount: Double, val hoursAgoAtNow: Double)
+data class DrugDose(val amount: Double, val hoursAgoAtNow: Double, val route: Route? = null)

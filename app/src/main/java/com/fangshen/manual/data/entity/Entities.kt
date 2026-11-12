@@ -28,6 +28,12 @@ data class CustomDrugEntity(
     val inhibitors: String?,
     val inducers: String?,
     val createdAt: Long,
+    // v4：简介、多途径、成瘾声明
+    val description: String? = null,
+    val routes: String? = null,
+    val addictive: Boolean = false,
+    val addictionRatePerHour: Double = 0.0,
+    val toleranceGroup: String? = null,
 )
 
 /** 自定义药物的效应线：服用剂量超过阈值时施加权重 */

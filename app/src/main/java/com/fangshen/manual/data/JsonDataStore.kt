@@ -2,6 +2,15 @@ package com.fangshen.manual.data
 
 import android.content.Context
 import com.fangshen.manual.model.AlertRule
+import com.fangshen.manual.model.AppSettings
+import com.fangshen.manual.model.CustomEffect
+import com.fangshen.manual.model.CustomInteraction
+import com.fangshen.manual.model.CustomPack
+import com.fangshen.manual.model.parseCustomEffect
+import com.fangshen.manual.model.parseCustomInteraction
+import com.fangshen.manual.model.parseCustomPack
+import com.fangshen.manual.model.parseSettings
+import com.fangshen.manual.model.toJson
 import com.fangshen.manual.data.entity.CustomDrugEntity
 import com.fangshen.manual.data.entity.CustomDrugNeuroEntity
 import com.fangshen.manual.data.entity.CustomDrugRuleEntity
@@ -33,6 +42,11 @@ data class JsonData(
     val profile: List<ProfileEntity> = emptyList(),
     val drugs: List<DrugJson> = emptyList(),
     val alerts: List<AlertRule> = emptyList(),
+    // —— v4 用户内容 ——
+    val customEffects: List<CustomEffect> = emptyList(),
+    val customPacks: List<CustomPack> = emptyList(),
+    val customInteractions: List<CustomInteraction> = emptyList(),
+    val settings: AppSettings = AppSettings(),
 )
 
 /**
@@ -87,6 +101,10 @@ class JsonDataStore(context: Context) {
         root.put("profile", JSONArray(data.profile.map { it.toJson() }))
         root.put("customDrugs", JSONArray(data.drugs.map { it.toJson() }))
         root.put("alerts", JSONArray(data.alerts.map { it.toJson() }))
+        root.put("customEffects", JSONArray(data.customEffects.map { it.toJson() }))
+        root.put("customPacks", JSONArray(data.customPacks.map { it.toJson() }))
+        root.put("customInteractions", JSONArray(data.customInteractions.map { it.toJson() }))
+        root.put("settings", data.settings.toJson())
         return root.toString(2)
     }
 
@@ -128,6 +146,16 @@ class JsonDataStore(context: Context) {
         alerts = root.optJSONArray("alerts")?.let { arr ->
             List(arr.length()) { i -> parseAlert(arr.getJSONObject(i)) }
         } ?: emptyList(),
+        customEffects = root.optJSONArray("customEffects")?.let { arr ->
+            List(arr.length()) { i -> parseCustomEffect(arr.getJSONObject(i)) }
+        } ?: emptyList(),
+        customPacks = root.optJSONArray("customPacks")?.let { arr ->
+            List(arr.length()) { i -> parseCustomPack(arr.getJSONObject(i)) }
+        } ?: emptyList(),
+        customInteractions = root.optJSONArray("customInteractions")?.let { arr ->
+            List(arr.length()) { i -> parseCustomInteraction(arr.getJSONObject(i)) }
+        } ?: emptyList(),
+        settings = root.optJSONObject("settings")?.let { parseSettings(it) } ?: AppSettings(),
     )
 
     private fun toJsonString(data: JsonData): String {
@@ -138,6 +166,10 @@ class JsonDataStore(context: Context) {
         root.put("profile", JSONArray(data.profile.map { it.toJson() }))
         root.put("customDrugs", JSONArray(data.drugs.map { it.toJson() }))
         root.put("alerts", JSONArray(data.alerts.map { it.toJson() }))
+        root.put("customEffects", JSONArray(data.customEffects.map { it.toJson() }))
+        root.put("customPacks", JSONArray(data.customPacks.map { it.toJson() }))
+        root.put("customInteractions", JSONArray(data.customInteractions.map { it.toJson() }))
+        root.put("settings", data.settings.toJson())
         return root.toString(2)
     }
 
@@ -233,6 +265,11 @@ private fun DrugJson.toJson(): JSONObject = JSONObject().apply {
     e.inhibitors?.let { put("inhibitors", it) }
     e.inducers?.let { put("inducers", it) }
     put("createdAt", e.createdAt)
+    e.description?.let { put("description", it) }
+    e.routes?.let { put("routes", it) }
+    put("addictive", e.addictive)
+    put("addictionRatePerHour", e.addictionRatePerHour)
+    e.toleranceGroup?.let { put("toleranceGroup", it) }
     put("rules", JSONArray(rules.map { r ->
         JSONObject().apply {
             put("id", r.id)
@@ -271,6 +308,11 @@ private fun parseDrug(o: JSONObject): DrugJson = DrugJson(
         inhibitors = o.optString("inhibitors", "").ifEmpty { null },
         inducers = o.optString("inducers", "").ifEmpty { null },
         createdAt = o.optLong("createdAt"),
+        description = o.optString("description", "").ifEmpty { null },
+        routes = o.optString("routes", "").ifEmpty { null },
+        addictive = o.optBoolean("addictive", false),
+        addictionRatePerHour = o.optDouble("addictionRatePerHour", 0.0),
+        toleranceGroup = o.optString("toleranceGroup", "").ifEmpty { null },
     ),
     rules = o.optJSONArray("rules")?.let { arr ->
         List(arr.length()) { i ->

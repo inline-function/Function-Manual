@@ -10,6 +10,8 @@ import androidx.lifecycle.ViewModel
 import com.fangshen.manual.FangShenApplication
 import com.fangshen.manual.data.entity.EntryEntity
 import com.fangshen.manual.model.DoseUnit
+import com.fangshen.manual.model.Route
+import com.fangshen.manual.model.effectiveRoutes
 import java.math.BigDecimal
 import com.fangshen.manual.model.DrugInfo
 import com.fangshen.manual.engine.DrugDoseInfo
@@ -44,6 +46,10 @@ data class QueueItem(
     val drugId: String,
     val tablets: Int = 0,
     val customAmount: BigDecimal? = null,
+    /** 自定义途径；短按默认取药物首发途径 */
+    val route: Route? = null,
+    /** 长按自定义的单位 */
+    val customUnit: DoseUnit? = null,
 )
 
 class HomeViewModel(
@@ -67,7 +73,10 @@ class HomeViewModel(
             it.type == "DOSE" && it.doseAmount != null && it.drugId != null && it.eventTime <= now
         }.mapNotNull { entry ->
             val drug = drugList.firstOrNull { it.id == entry.drugId } ?: return@mapNotNull null
-            DrugDoseInfo(drug, entry.doseAmount!!.toBigDecimal(), entry.eventTime)
+            DrugDoseInfo(
+                drug, entry.doseAmount!!.toBigDecimal(), entry.eventTime,
+                route = Route.fromName(entry.route),
+            )
         }
         // 活性代谢物：母药每次服药生成一条"伪服药"（该代谢物条目自身的 t½ 与效应规则生效）
         val doses = baseDoses + baseDoses.flatMap { metabolitePseudoDoses(it, drugList) }
@@ -107,9 +116,8 @@ class HomeViewModel(
     }
 
     /** 长按药物卡片（或无单片剂量的药物短按）：手动输入剂量加入待服用列表 */
-    fun addCustomDose(drug: DrugInfo, amount: BigDecimal) {
-        if (amount <= BigDecimal.ZERO) return
-        doseQueue.add(QueueItem(id = ++queueIdSeq, drugId = drug.id, customAmount = amount))
+    fun addCustomDose(drug: DrugInfo, amount: BigDecimal, unit: DoseUnit = drug.doseUnit, route: Route? = null) {
+        doseQueue.add(QueueItem(id = ++queueIdSeq, drugId = drug.id, customAmount = amount, customUnit = unit, route = route))
     }
 
     fun removeQueueItem(item: QueueItem) {
@@ -142,8 +150,8 @@ class HomeViewModel(
                         content = item.customAmount?.let { "手动输入剂量" },
                         drugId = drug.id,
                         doseAmount = amount.stripTrailingZeros().toPlainString(),
-                        doseUnit = drug.doseUnit.name,
-                        route = drug.route.name,
+                        doseUnit = (item.customUnit ?: drug.doseUnit).name,
+                        route = (item.route ?: drug.effectiveRoutes().first()).name,
                         attachmentUri = null,
                         durationMs = null,
                         eventTime = now,
@@ -189,7 +197,7 @@ class HomeViewModel(
             val entry = drugList.firstOrNull { it.id == "builtin:" + meta.key } ?: return@mapNotNull null
             val delayHours = meta.formationDelayHours ?: dose.drug.halfLifeHours.coerceIn(0.25, 24.0) * 0.25
             val time = dose.time + (delayHours * 3_600_000.0).toLong()
-            if (time > System.currentTimeMillis()) return@mapNotNull null
+            // 即使代谢物尚未形成（时间在未来）也保留：曲线该时刻前自然为 0
             val unitFactor = MG_PER_UNIT[dose.drug.doseUnit] ?: 1.0
             val targetFactor = MG_PER_UNIT[entry.doseUnit] ?: 1.0
             val amount = dose.amount.toDouble() * (meta.fmPct / 100.0) * meta.potency *

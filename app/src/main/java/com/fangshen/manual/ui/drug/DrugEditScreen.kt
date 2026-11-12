@@ -27,7 +27,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -184,6 +186,70 @@ fun DrugEditScreen(
                 onRemove = { tag -> viewModel.update { it.copy(effectTags = it.effectTags - tag) } },
                 onAdd = { tag -> viewModel.update { it.copy(effectTags = it.effectTags + tag) } },
             )
+
+            SectionTitle("简介与给药")
+
+            OutlinedTextField(
+                value = form.description,
+                onValueChange = { v -> viewModel.update { it.copy(description = v) } },
+                label = { Text("简介（通俗描述）") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 2,
+            )
+
+            // 多途径：首发途径为短按默认
+            Text("支持的给药途径（首个为短按默认）", style = MaterialTheme.typography.labelLarge)
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                val currentRoutes = form.routes.ifEmpty { listOf(form.route) }
+                Route.entries.forEach { r ->
+                    FilterChip(
+                        selected = r.name in currentRoutes,
+                        onClick = {
+                            viewModel.update { f ->
+                                val list = currentRoutes.toMutableList()
+                                if (r.name in list) list.remove(r.name) else list.add(r.name)
+                                f.copy(
+                                    routes = list,
+                                    route = if (list.isNotEmpty()) list.first() else f.route,
+                                )
+                            }
+                        },
+                        label = { Text(r.label) },
+                    )
+                }
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(
+                    checked = form.addictive,
+                    onCheckedChange = { v -> viewModel.update { it.copy(addictive = v) } },
+                )
+                Text("有成瘾性（开启成瘾游标线与剂量折算）")
+            }
+            if (form.addictive) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    OutlinedTextField(
+                        value = form.addictionRatePerHour,
+                        onValueChange = { v -> viewModel.update { it.copy(addictionRatePerHour = v) } },
+                        label = { Text("游标移动速度（每小时）") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                    )
+                    OutlinedTextField(
+                        value = form.toleranceGroup,
+                        onValueChange = { v -> viewModel.update { it.copy(toleranceGroup = v) } },
+                        label = { Text("交叉耐药组（可空）") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1.4f),
+                    )
+                }
+            }
 
             SectionTitle("酶")
             ChipListEditor(

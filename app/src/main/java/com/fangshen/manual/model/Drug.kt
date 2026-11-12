@@ -12,6 +12,8 @@ data class DoseEffectRule(
     val threshold: BigDecimal,
     val effectName: String,
     val weight: Int,
+    /** 该规则贡献的效应按慢性呈现（默认急性）；同效应急慢并触发只显示急性、权重叠加 */
+    val isChronic: Boolean = false,
 )
 
 /** 神经递质权重改变 */
@@ -82,6 +84,16 @@ data class DrugInfo(
     val rules: List<DoseEffectRule>,
     val neuros: List<NeuroDelta>,
     val isBuiltin: Boolean,
+    // —— v4 药物卡片/成瘾扩展 ——
+    /** 一段简介（药品说明），药物详情页展示 */
+    val description: String? = null,
+    /** 支持的给药途径；短按默认首个，长按可自选 */
+    val routes: List<Route> = emptyList(),
+    /** 声明成瘾性：按小时速度移动成瘾游标线 */
+    val addictive: Boolean = false,
+    val addictionRatePerHour: Double = 0.0,
+    /** 交叉耐药组：同组药物共享同一条成瘾游标线 */
+    val toleranceGroup: String? = null,
     // —— v3 药代扩展（默认回退线性 Bateman，保持旧数据兼容）——
     val nonlinearity: MichaelisMenten? = null,
     val autoInduction: AutoInduction? = null,
@@ -116,9 +128,19 @@ fun CustomDrugEntity.toDrugInfo(
     rules = rules.map { DoseEffectRule(it.threshold.toBigDecimal(), it.effectName, it.weight) },
     neuros = neuros.map { NeuroDelta(it.neurotransmitter, it.delta) },
     isBuiltin = false,
+    description = description,
+    routes = routes?.let { r -> splitCsv(r).mapNotNull { Route.fromNameOrNull(it) } } ?: emptyList(),
+    addictive = addictive,
+    addictionRatePerHour = addictionRatePerHour,
+    toleranceGroup = toleranceGroup,
 )
+
+fun Route.Companion.fromNameOrNull(name: String): Route? = runCatching { fromName(name) }.getOrNull()
 
 fun splitCsv(s: String?): List<String> =
     s?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() } ?: emptyList()
 
 fun joinCsv(list: List<String>): String = list.joinToString(",")
+
+/** 实际支持的给药途径：未声明时回退为单一路由（短按默认） */
+fun DrugInfo.effectiveRoutes(): List<Route> = if (routes.isEmpty()) listOf(route) else routes

@@ -4,6 +4,7 @@ import com.fangshen.manual.ui.common.DrugPickCard
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,13 +22,17 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -53,7 +58,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fangshen.manual.core.enzymeArrowsSuffix
 import com.fangshen.manual.core.formatDoseBD
+import com.fangshen.manual.model.DoseUnit
 import com.fangshen.manual.model.DrugInfo
+import com.fangshen.manual.model.Route
+import com.fangshen.manual.model.effectiveRoutes
 import java.math.BigDecimal
 
 /**
@@ -187,8 +195,9 @@ fun DosingSheet(
     customDrug?.let { drug ->
         CustomDoseDialog(
             drugName = drug.name,
-            onConfirm = { amount ->
-                viewModel.addCustomDose(drug, amount)
+            drug = drug,
+            onConfirm = { amount, unit, route ->
+                viewModel.addCustomDose(drug, amount, unit, route)
                 customDrug = null
             },
             onDismiss = { customDrug = null },
@@ -248,20 +257,27 @@ private fun QueueRow(
     }
 }
 
+/** 长按给药：自定义剂量、单位与给药途径 */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CustomDoseDialog(
     drugName: String,
-    onConfirm: (BigDecimal) -> Unit,
+    drug: DrugInfo,
+    onConfirm: (amount: BigDecimal, unit: DoseUnit, route: Route) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var text by remember { mutableStateOf("") }
+    val routes = remember(drug) { drug.effectiveRoutes() }
+    var unit by remember { mutableStateOf(drug.doseUnit) }
+    var route by remember { mutableStateOf(routes.firstOrNull() ?: drug.route) }
+    var routeMenu by remember { mutableStateOf(false) }
     val amount = runCatching { BigDecimal(text.trim()) }.getOrNull()
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("输入剂量") },
+        title = { Text("自定义给药") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(text = drugName)
+                Text(text = drugName, fontWeight = FontWeight.SemiBold)
                 OutlinedTextField(
                     value = text,
                     onValueChange = { text = it },
@@ -271,11 +287,46 @@ private fun CustomDoseDialog(
                     supportingText = { Text("必填，须大于 0") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text("单位", style = MaterialTheme.typography.bodyMedium)
+                    DoseUnit.entries.forEach { u ->
+                        FilterChip(
+                            selected = unit == u,
+                            onClick = { unit = u },
+                            label = { Text(u.shortLabel) },
+                        )
+                    }
+                }
+                Box {
+                    OutlinedTextField(
+                        value = route.label,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("给药途径") },
+                        singleLine = true,
+                        trailingIcon = { Icon(Icons.Rounded.ArrowDropDown, contentDescription = null) },
+                        modifier = Modifier.fillMaxWidth().clickable { routeMenu = true },
+                    )
+                    DropdownMenu(
+                        expanded = routeMenu,
+                        onDismissRequest = { routeMenu = false },
+                    ) {
+                        routes.forEach { r ->
+                            DropdownMenuItem(
+                                text = { Text(r.label) },
+                                onClick = { route = r; routeMenu = false },
+                            )
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
             TextButton(
-                onClick = { amount?.let(onConfirm) },
+                onClick = { amount?.let { onConfirm(it, unit, route) } },
                 enabled = amount != null && amount > BigDecimal.ZERO,
             ) { Text("加入待服用") }
         },

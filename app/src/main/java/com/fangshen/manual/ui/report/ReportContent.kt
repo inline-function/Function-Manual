@@ -1,6 +1,8 @@
 package com.fangshen.manual.ui.report
 
 import androidx.compose.foundation.background
+import androidx.compose.ui.Alignment
+import androidx.compose.material3.Surface
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,10 +31,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import com.fangshen.manual.model.DialogItem
 import com.fangshen.manual.model.Report
 import com.fangshen.manual.model.ReportCharacter
+import com.fangshen.manual.model.ReportFragment
+import com.fangshen.manual.model.flatFragments
 import com.fangshen.manual.model.hasNote
 import com.fangshen.manual.model.titleText
+import com.fangshen.manual.ui.markdown.parseInlineMd
 
 /** 整篇报告的正文渲染：阅读页与“长截图”共用这一份 */
 @Composable
@@ -68,35 +74,11 @@ fun ReportBody(
         if (head.preface.isNotBlank()) {
             QuoteBlock(text = head.preface, label = "前言")
         }
-        // 5. 正文片段：每段一张圆角卡片
-        report.body.forEach { episode ->
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                ),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    episode.titleText()?.let { title ->
-                        Text(
-                            text = title,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
-                    if (episode.text.isNotBlank()) {
-                        Text(
-                            text = episode.text,
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                    }
-                }
+        // 5. 正文片段：场景片段为圆角卡片，对话片段为 QQ 式气泡
+        report.flatFragments().forEach { fragment ->
+            when (fragment) {
+                is ReportFragment.Scene -> SceneCard(fragment)
+                is ReportFragment.Dialog -> DialogBlock(fragment, author = head.name.ifBlank { head.characters.firstOrNull()?.name ?: "" })
             }
         }
         // 6. 结语：同前言
@@ -189,3 +171,101 @@ fun QuoteBlock(text: String, label: String) {
 val NoteBlue = Color(0xFF1E88E5)
 val QuoteGray = Color(0xFF9E9E9E)
 val QuoteBar = Color(0xFFBDBDBD)
+
+/** 场景片段：时间 + 地点标题，描述正文 */
+@Composable
+private fun SceneCard(fragment: ReportFragment.Scene) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        ),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            val title = when {
+                fragment.time.isNotBlank() && fragment.place.isNotBlank() ->
+                    fragment.time + "：" + fragment.place
+                fragment.time.isNotBlank() -> fragment.time
+                fragment.place.isNotBlank() -> fragment.place
+                else -> null
+            }
+            title?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            if (fragment.description.isNotBlank()) {
+                Text(
+                    text = parseInlineMd(fragment.description),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 对话片段：QQ 聊天式——首报告人（head.name）靠右，其余人靠左；
+ * 事件条目居中、无卡片背景（类似 QQ 系统文本）。
+ */
+@Composable
+private fun DialogBlock(fragment: ReportFragment.Dialog, author: String) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        fragment.items.forEach { item ->
+            when (item) {
+                is DialogItem.Event -> Text(
+                    text = item.content,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = QuoteGray,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                )
+                is DialogItem.Say -> {
+                    val isAuthor = author.isNotBlank() && item.name == author
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = if (isAuthor) Arrangement.End else Arrangement.Start,
+                    ) {
+                        Column(
+                            horizontalAlignment = if (isAuthor) Alignment.End else Alignment.Start,
+                            modifier = Modifier.width(IntrinsicSize.Max).fillMaxWidth(0.8f),
+                        ) {
+                            Text(
+                                text = item.name,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = QuoteGray,
+                                modifier = Modifier.padding(bottom = 3.dp),
+                            )
+                            Surface(
+                                shape = RoundedCornerShape(14.dp),
+                                color = if (isAuthor) BubbleAuthor else BubbleOther,
+                            ) {
+                                Text(
+                                    text = parseInlineMd(item.content),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = if (isAuthor) Color.White else MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private val BubbleAuthor = Color(0xFF4E8DDB)
+private val BubbleOther = Color(0xFFEDEDED)

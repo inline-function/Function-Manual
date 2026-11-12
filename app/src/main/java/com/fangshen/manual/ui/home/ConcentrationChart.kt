@@ -38,6 +38,7 @@ import com.fangshen.manual.core.formatDoseBD
 import com.fangshen.manual.data.entity.EntryEntity
 import com.fangshen.manual.model.DoseUnit
 import com.fangshen.manual.model.DrugInfo
+import com.fangshen.manual.model.Route
 import com.fangshen.manual.model.SubjectiveTagColors
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberBottom
@@ -96,6 +97,13 @@ private fun niceStep(max: Double): Double {
  * 置信度很低，只能作为记录的参考，不能作为用药依据。
  */
 @OptIn(ExperimentalLayoutApi::class)
+/** 图表用的一个给药点：剂量 + 时间 + 途径 */
+private data class DosePoint(
+    val amount: java.math.BigDecimal,
+    val time: Long,
+    val route: Route,
+)
+
 @Composable
 fun ConcentrationChart(
     drugs: List<DrugInfo>,
@@ -104,6 +112,8 @@ fun ConcentrationChart(
     onUnitChange: (DoseUnit) -> Unit,
     highlightedDrugId: String?,
     onLegendClick: (String) -> Unit,
+    /** 成瘾游标线常显（设置项；关闭时仅高亮药物曲线时显示其游标线） */
+    showAddictionCursor: Boolean = false,
     modifier: Modifier = Modifier,
     now: Long,
 ) {
@@ -113,14 +123,18 @@ fun ConcentrationChart(
         doses.filter { it.type == "DOSE" && it.drugId != null }
             .groupBy { it.drugId!! }
             .mapValues { (_, entries) ->
-                entries.map { (it.doseAmount?.toBigDecimalOrNull() ?: java.math.BigDecimal.ZERO) to it.eventTime }
+                entries.map {
+                    DosePoint(
+                        it.doseAmount?.toBigDecimalOrNull() ?: java.math.BigDecimal.ZERO,
+                        it.eventTime,
+                        Route.fromName(it.route),
+                    )
+                }
             }
     }
     val activeDrugs = remember(chartDrugs, dosesByDrug, now) {
         chartDrugs.filter { drug ->
-            dosesByDrug[drug.id]?.any { (amount, time) ->
-                amount > java.math.BigDecimal.ZERO && time <= now
-            } == true
+            dosesByDrug[drug.id]?.any { it.amount > java.math.BigDecimal.ZERO } == true
         }
     }
 
@@ -164,6 +178,8 @@ fun ConcentrationChart(
                 unit = unit,
                 now = now,
                 highlightedDrugId = highlightedDrugId,
+                allDrugs = drugs,
+                showAddictionCursor = showAddictionCursor,
                 modifier = Modifier.fillMaxSize(),
             )
             // 顶层拦截点击：保证图表任何状态下短按都能循环切换剂量单位
@@ -221,10 +237,14 @@ private fun LegendItem(
 @Composable
 private fun ChartCanvas(
     chartDrugs: List<DrugInfo>,
-    dosesByDrug: Map<String, List<Pair<java.math.BigDecimal, Long>>>,
+    dosesByDrug: Map<String, List<DosePoint>>,
     unit: DoseUnit,
     now: Long,
     highlightedDrugId: String?,
+    /** 全部药物（含未入选本单位的药，供成瘾游标线计算） */
+    allDrugs: List<DrugInfo> = emptyList(),
+    /** 成瘾游标线常显（否则仅在高亮药物时显示该药的线） */
+    showAddictionCursor: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val modelProducer = remember { CartesianChartModelProducer() }
@@ -243,25 +263,45 @@ private fun ChartCanvas(
     // 全目录有上百种药，零浓度空线会让图表卡顿且压在坐标轴上。
     val seriesDrugs = remember(chartDrugs, dosesByDrug, now) {
         chartDrugs.filter { drug ->
-            (dosesByDrug[drug.id] ?: emptyList()).any { (amount, time) ->
-                amount > java.math.BigDecimal.ZERO && time <= now
-            }
+            (dosesByDrug[drug.id] ?: emptyList()).any { it.amount > java.math.BigDecimal.ZERO }
         }
     }
-    LaunchedEffect(seriesDrugs, dosesByDrug, now) {
-        val (xs, seriesYs) = withContext(Dispatchers.Default) {
+    val xsHours = remember { (-720..2160 step 10).map { it / 60.0 } }
+    val cursorLines = remember(allDrugs, dosesByDrug, now) {
+        val records = dosesByDrug.entries.flatMap { (id, points) ->
+            val drug = allDrugs.firstOrNull { it.id == id } ?: return@flatMap emptyList()
+            val f = when (drug.doseUnit) {
+                DoseUnit.MG -> 1.0
+                DoseUnit.G -> 1000.0
+                DoseUnit.MCG -> 0.001
+            }
+            points.map { p ->
+                com.fangshen.manual.engine.DoseRecord(id, p.amount.toDouble() * f, p.route, p.time)
+            }
+        }
+        com.fangshen.manual.engine.AddictionEngine.cursorLines(allDrugs, records, xsHours, now)
+    }
+    val visibleCursorLines = remember(cursorLines, highlightedDrugId, showAddictionCursor) {
+        cursorLines.filter { line ->
+            showAddictionCursor || (highlightedDrugId != null && highlightedDrugId in line.memberDrugIds)
+        }
+    }
+
+    LaunchedEffect(seriesDrugs, dosesByDrug, now, visibleCursorLines, unit) {
+        val (xs, seriesYs, cursorYs) = withContext(Dispatchers.Default) {
             // 固定 12 小时一个单位：现在之前 1 个单位、之后 3 个单位（-720..2160 分钟）
-            val xs = (-720..2160 step 10).map { it.toDouble() }
+            val xs = xsHours
             val seriesYs: List<List<Double>> = if (seriesDrugs.isEmpty()) {
                 listOf(xs.map { 0.0 })
             } else {
                 seriesDrugs.map { drug ->
-                    val past = (dosesByDrug[drug.id] ?: emptyList()).filter { it.second <= now }
+                    val past = (dosesByDrug[drug.id] ?: emptyList()).filter { it.amount > java.math.BigDecimal.ZERO }
                     if (com.fangshen.manual.engine.PkEngine.needsIntegration(drug)) {
                         // 非线性药代（容量限制消除/自诱导）：RK4 积分整条序列
-                        val doseList = past.map { (amount, time) ->
+                        val doseList = past.map { point ->
                             com.fangshen.manual.engine.DrugDose(
-                                amount.toDouble(), (now - time) / 3_600_000.0,
+                                point.amount.toDouble(), (now - point.time) / 3_600_000.0,
+                                point.route,
                             )
                         }
                         com.fangshen.manual.engine.PkEngine.concentrationSeries(
@@ -269,20 +309,29 @@ private fun ChartCanvas(
                         )
                     } else {
                         xs.map { x ->
-                            past.sumOf { (amount, time) ->
-                                val hoursAgo = (now - time) / 3_600_000.0
+                            past.sumOf { point ->
+                                val hoursAgo = (now - point.time) / 3_600_000.0
                                 com.fangshen.manual.engine.PkEngine.concentrationAt(
-                                    drug, amount.toDouble(), hoursAgo + x / 60.0,
+                                    drug, point.amount.toDouble(), hoursAgo + x / 60.0, point.route,
                                 )
                             }
                         }
                     }
                 }
             }
-            xs to seriesYs
+            // 成瘾游标线：内部 mg/L 换算到当前图表单位
+            val unitFactor = when (unit) {
+                DoseUnit.MG -> 1.0
+                DoseUnit.G -> 1000.0
+                DoseUnit.MCG -> 0.001
+            }
+            val cursorYs = visibleCursorLines.map { line -> line.ys.map { it / unitFactor } }
+            Triple(xs, seriesYs, cursorYs)
         }
-        // 纵轴刻度间距按曲线峰值确定，写入 extras 供坐标轴与标签格式化共用
-        val yMax = seriesYs.maxOf { series -> series.maxOrNull() ?: 0.0 }.coerceAtLeast(0.0)
+        // 纵轴刻度间距按曲线（含游标线）峰值确定，写入 extras 供坐标轴与标签格式化共用
+        val yMax = (seriesYs.maxOfOrNull { it.maxOrNull() ?: 0.0 } ?: 0.0)
+            .coerceAtLeast(cursorYs.maxOfOrNull { it.maxOrNull() ?: 0.0 } ?: 0.0)
+            .coerceAtLeast(0.0)
         modelProducer.runTransaction {
             extras { extra ->
                 extra[MinutesPerTickKey] = 72
@@ -290,6 +339,7 @@ private fun ChartCanvas(
             }
             lineSeries {
                 seriesYs.forEach { ys -> series(x = xs, y = ys) }
+                cursorYs.forEach { ys -> series(x = xs, y = ys) }
             }
         }
     }
@@ -305,12 +355,16 @@ private fun ChartCanvas(
                             ),
                         )
                     } else {
-                        seriesDrugs.map { drug ->
+                        val parent = seriesDrugs.firstOrNull { it.id == highlightedDrugId }
+                        val metaboliteIds = parent?.activeMetabolites?.map { "builtin:" + it.key } ?: emptyList()
+                        val drugLines = seriesDrugs.map { drug ->
+                            val focused = highlightedDrugId == null || highlightedDrugId == drug.id ||
+                                drug.id in metaboliteIds
                             LineCartesianLayer.rememberLine(
                                 fill = LineCartesianLayer.LineFill.single(
                                     fill(
                                         Color(SubjectiveTagColors.colorOf(drug)).copy(
-                                            alpha = if (highlightedDrugId == null || highlightedDrugId == drug.id) 1f else 0.15f,
+                                            alpha = if (focused) 1f else 0.15f,
                                         ),
                                     ),
                                 ),
@@ -320,6 +374,18 @@ private fun ChartCanvas(
                                 pointProvider = null,
                             )
                         }
+                        // 成瘾游标线：虚线，颜色取其首个成员的标签色
+                        val cursorLinesSpec = visibleCursorLines.map { line ->
+                            val base = Color(line.colorArgb)
+                            LineCartesianLayer.rememberLine(
+                                fill = LineCartesianLayer.LineFill.single(fill(base.copy(alpha = 0.85f))),
+                                stroke = LineCartesianLayer.LineStroke.continuous(
+                                    thickness = 1.dp,
+                                ),
+                                pointProvider = null,
+                            )
+                        }
+                        drugLines + cursorLinesSpec
                     },
                 ),
             ),

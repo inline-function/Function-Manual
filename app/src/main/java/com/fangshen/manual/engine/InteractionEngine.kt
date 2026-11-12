@@ -20,6 +20,7 @@ object InteractionEngine {
         SUBSTRATE_COMPETITION("竞争代谢酶"),
         PHARMACODYNAMIC("药效学协同"),
         DRUG_BURDEN("负荷叠加"),
+        CAUTIOUS("自定义预警"),
     }
 
     data class Warning(
@@ -57,6 +58,21 @@ object InteractionEngine {
     private val CNS_DEPRESSANT_TAGS = GABA_TAGS + OPIOID_TAGS + setOf("乙醇", "镇静剂")
     private val ETHANOL_TAGS = setOf("乙醇")
     private val APAP_TAGS = setOf("对乙酰氨基酚类")
+
+    /** 用户自定义配对（匹配串可为药名或标签） */
+    private var customPairs: List<com.fangshen.manual.model.CustomInteraction> = emptyList()
+
+    fun setCustomPairs(pairs: List<com.fangshen.manual.model.CustomInteraction>) {
+        customPairs = pairs
+    }
+
+    private fun matchesCustom(drug: DrugInfo, matcher: String): Boolean {
+        val m = matcher.trim()
+        if (m.isEmpty()) return false
+        return drug.name == m || drug.name.contains(m) || (drug.subjectiveTags + drug.effectTags).any {
+            it == m || it.contains(m)
+        }
+    }
 
     /** 药效学危险配对：一侧具备 aTags 中任一标签，另一侧具备 bTags 中任一标签 */
     private data class MechanismPair(
@@ -144,6 +160,22 @@ object InteractionEngine {
                 val pairKey = if (drug.name < other.name) drug.name to other.name else other.name to drug.name
                 // 抑制剂/诱导剂与底物方向明确，重复检查用 (drug, other) 作键
                 val directionalKey = drug.name to other.name
+                // 用户自定义配对
+                for (cp in customPairs) {
+                    if (!cp.enabled) continue
+                    val aHit = matchesCustom(drug, cp.matcherA) && matchesCustom(other, cp.matcherB)
+                    val bHit = matchesCustom(drug, cp.matcherB) && matchesCustom(other, cp.matcherA)
+                    if (!(aHit || bHit)) continue
+                    if (pairKey in seen || directionalKey in seen) continue
+                    warnings += Warning(
+                        drugName = drug.name,
+                        otherDrugName = other.name,
+                        enzyme = "自定义",
+                        kind = Kind.CAUTIOUS,
+                        message = cp.message.ifBlank { "两药联用存在用户标记的风险。" },
+                    )
+                    seen += pairKey
+                }
                 if (directionalKey in seen) continue
 
                 for (enzyme in drug.inhibitors.intersect(other.substrates.toSet())) {

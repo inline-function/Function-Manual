@@ -62,11 +62,29 @@ val NEURO_DEVIATION_EFFECTS: Map<String, Pair<String?, String?>> = mapOf(
 /** 效应目录：全部领域内效应、效应包及其成员。 */
 object EffectCatalog {
 
-    val PACKS: Map<String, List<String>> = mapOf(
+    private val BUILTIN_PACKS: Map<String, List<String>> = mapOf(
         "血清素综合征" to listOf("恶心", "嗜睡", "心动过速", "谵妄", "出汗", "寒战", "肌阵挛", "高血压"),
         "抗胆碱能综合征" to listOf("口干", "便秘", "尿潴留", "视物模糊", "心动过速", "嗜睡", "谵妄", "潮红"),
         "阿片类中毒" to listOf("瞳孔缩小", "呼吸抑制", "镇静", "欣快", "便秘"),
     )
+
+    /** 用户自定义效应包（键不计入内置同名包） */
+    private var customPacks: Map<String, List<String>> = emptyMap()
+
+    /** 内置 + 自定义合并视图 */
+    val PACKS: Map<String, List<String>> get() = BUILTIN_PACKS + customPacks
+
+    /** 更新自定义效应与包（由设置/数据层注入） */
+    fun updateCustom(defs: List<EffectDef>, packs: Map<String, List<String>>) {
+        customDefs = defs
+        customPacks = packs
+        mergedDefMap = (defs.associateBy { it.name } + builtinDefMap)
+    }
+
+    /** 全部自定义效应（编辑页用） */
+    val customDefsList: List<EffectDef> get() = customDefs
+
+    private var customDefs: List<EffectDef> = emptyList()
 
     private val defs: List<EffectDef> = listOf(
         // —— 正面效应 ——
@@ -248,6 +266,13 @@ object EffectCatalog {
             description = "这是肝脏代谢负荷过重或毒性损伤时发出的警报。轻度表现为恶心、乏力与食欲下降，重度可出现皮肤巩膜发黄、出血倾向与意识模糊（肝性脑病）。对乙酰氨基酚过量、酒精与某些草药是常见诱因，出现警示信号应立即就医。",
         ),
         EffectDef(
+            "戒断", EffectUrgency.CHRONIC, EffectValence.NEGATIVE,
+            description = "这是身体对药物浓度下滑发出的抗议。当血药浓度明显低于耐受基线（成瘾游标线）时，" +
+                "身体会反向索要它已经习惯的东西：焦虑、失眠、出汗、震颤、骨痛、恶心轮番上阵，" +
+                "主观上像被一只无形的手按进水里。它是耐受形成后的镜像信号，提示需要与医生共同制定缓慢减量方案，" +
+                "而非突然停药。",
+        ),
+        EffectDef(
             "低血压", EffectUrgency.ACUTE, EffectValence.NEGATIVE,
             inverseOf = "高血压",
             description = "这是血压明显偏低的体验。起立时眼前发黑、双腿发软，需要扶住东西才能站稳；严重时面色苍白、冷汗淋漓，甚至短暂失去意识。降压药过量、联用多种镇静药或对酒精过敏样反应（双硫仑样）时容易出现，改变体位时请放慢动作。",
@@ -265,11 +290,26 @@ object EffectCatalog {
         "阿片类中毒" to "这是阿片类药物过量抑制中枢神经系统而引发的危急状态。典型表现包括针尖样瞳孔、呼吸变浅变慢、嗜睡乃至昏迷，并常伴有欣快与便秘。呼吸抑制是其最危险的信号，一旦出现必须立即送医抢救。",
     )
 
-    fun packDescription(name: String): String = PACK_DESCRIPTIONS[name] ?: ""
+    fun packDescription(name: String): String =
+        PACK_DESCRIPTIONS[name] ?: customPackDescriptions[name] ?: ""
 
-    val defMap: Map<String, EffectDef> = defs.associateBy { it.name }
+    /** 自定义包的说明（由 updateCustomPacksDescriptions 注入） */
+    private var customPackDescriptions: Map<String, String> = emptyMap()
 
-    fun def(name: String): EffectDef? = defMap[name]
+    fun updateCustomPacksDescriptions(map: Map<String, String>) {
+        customPackDescriptions = map
+    }
+
+    private val builtinDefMap: Map<String, EffectDef> = defs.associateBy { it.name }
+
+    private var mergedDefMap: Map<String, EffectDef> = builtinDefMap
+
+    val defMap: Map<String, EffectDef> get() = mergedDefMap
+
+    fun def(name: String): EffectDef? = mergedDefMap[name]
+
+    /** 仅内置效应（词典页"内置"分区） */
+    val builtinDefMapOnly: Map<String, EffectDef> get() = builtinDefMap
 
     /** 全部已知效应名（独立效应 + 效应包），供预警规则选用 */
     val allEffectNames: List<String> get() = defMap.keys.toList() + PACKS.keys

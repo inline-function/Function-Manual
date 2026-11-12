@@ -82,10 +82,10 @@ fun AppDrawer(
         }
         Column(modifier = Modifier.padding(horizontal = 12.dp)) {
             DrawerItem(
-                label = "报告",
-                description = "记录您发生了什么",
+                label = "统计",
+                description = "服药历史、报告与种类统计",
                 icon = Icons.Rounded.MenuBook,
-                route = Routes.REPORTS,
+                route = Routes.STATS,
                 onNavigate = onNavigate,
             )
             DrawerItem(
@@ -117,6 +117,13 @@ fun AppDrawer(
                 onNavigate = onNavigate,
             )
             DrawerItem(
+                label = "文档",
+                description = "药理与精神病学通俗读物",
+                icon = Icons.Rounded.Description,
+                route = Routes.DOCUMENTS,
+                onNavigate = onNavigate,
+            )
+            DrawerItem(
                 label = "处方",
                 description = "创建您的药物组合",
                 icon = Icons.Rounded.Description,
@@ -131,10 +138,10 @@ fun AppDrawer(
                 onNavigate = onNavigate,
             )
             DrawerItem(
-                label = "数据管理",
+                label = "设置",
                 description = "清除记录与自定义药物",
                 icon = Icons.Rounded.CleaningServices,
-                route = Routes.DATA_MANAGEMENT,
+                route = Routes.SETTINGS,
                 onNavigate = onNavigate,
             )
             DrawerItem(
