@@ -70,7 +70,7 @@ object AddictionEngine {
                 val drug = byId[d.drugId] ?: return@mapNotNull null
                 if (d.amountMg <= 0.0) return@mapNotNull null
                 Ev(
-                    t = (now - d.time) / 3_600_000.0,
+                    t = (d.time - now) / 3_600_000.0,
                     mg = d.amountMg,
                     route = d.route ?: drug.effectiveRoutes().first(),
                     drug = drug,
@@ -110,7 +110,7 @@ object AddictionEngine {
                 val dr = byId[d.drugId] ?: return@mapNotNull null
                 if (d.amountMg <= 0.0) return@mapNotNull null
                 Ev(
-                    t = (now - d.time) / 3_600_000.0,
+                    t = (d.time - now) / 3_600_000.0,
                     mg = d.amountMg,
                     route = d.route ?: dr.effectiveRoutes().first(),
                     drug = dr,

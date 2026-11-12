@@ -79,7 +79,11 @@ fun ReportBody(
         report.flatFragments().forEach { fragment ->
             when (fragment) {
                 is ReportFragment.Scene -> SceneCard(fragment)
-                is ReportFragment.Dialog -> DialogBlock(fragment, author = head.name.ifBlank { head.characters.firstOrNull()?.name ?: "" })
+                // 报告者优先取 head.characters 的第一个人（“报告者：”栏），避免把标题当成发言人
+                is ReportFragment.Dialog -> DialogBlock(
+                    fragment,
+                    author = head.characters.firstOrNull()?.name?.takeIf { it.isNotBlank() } ?: head.name,
+                )
             }
         }
         // 6. 结语：同前言

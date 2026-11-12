@@ -24,6 +24,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.text.ClickableText
 import kotlinx.coroutines.launch
 
 /**
@@ -179,8 +186,10 @@ fun MarkdownDoc(
                 }
                 is MdBlock.Quote -> item(key = "q$index") {
                     Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+                        // 竖条必须 fillMaxHeight：空 Box 无内容时高度为 0，竖条会整个消失
                         Box(modifier = Modifier
                             .padding(end = 12.dp)
+                            .fillMaxHeight()
                             .width(4.dp)
                             .clip(RoundedCornerShape(2.dp))
                             .background(MaterialTheme.colorScheme.outlineVariant)) {}
@@ -188,6 +197,7 @@ fun MarkdownDoc(
                             text = parseInlineMd(block.text),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f),
                         )
                     }
                 }
@@ -223,6 +233,12 @@ fun MarkdownDoc(
     }
 }
 
+/**
+ * 一段内联内容（纯文本 + 锚点 + 文档跳转）渲染成单个 Text：
+ * 旧实现把每段放进 Row 内的独立 Text，多个 Text 之间不会换行，
+ * 长文本会溢出右缘（“文字乱走”）。合并为一个 AnnotatedString 即可正常折行，
+ * 跳转通过 StringAnnotation 在点击处定位。
+ */
 @Composable
 private fun InlineLine(
     segments: List<MdInline>,
@@ -230,29 +246,51 @@ private fun InlineLine(
     onDocJump: (String, String?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(modifier = modifier.fillMaxWidth()) {
-        segments.forEach { seg ->
-            when (seg) {
-                is MdInline.Plain -> Text(
-                    text = parseInlineMd(seg.text),
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-                is MdInline.Anchor -> Text(
-                    text = parseInlineMd(seg.text),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.clickable { onAnchor(seg.heading) },
-                )
-                is MdInline.DocJump -> Text(
-                    text = parseInlineMd(seg.text),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.clickable { onDocJump(seg.docId, seg.heading) },
-                )
+    val linkColor = MaterialTheme.colorScheme.primary
+    val styled = remember(segments, linkColor) {
+        buildAnnotatedString {
+            segments.forEach { seg ->
+                when (seg) {
+                    is MdInline.Plain -> append(parseInlineMd(seg.text))
+                    is MdInline.Anchor -> {
+                        pushStringAnnotation(tag = TAG_ANCHOR, annotation = seg.heading)
+                        pushStyle(SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline))
+                        append(parseInlineMd(seg.text))
+                        pop()
+                        pop()
+                    }
+                    is MdInline.DocJump -> {
+                        pushStringAnnotation(tag = TAG_JUMP, annotation = seg.docId + "#" + (seg.heading ?: ""))
+                        pushStyle(SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline))
+                        append(parseInlineMd(seg.text))
+                        pop()
+                        pop()
+                    }
+                }
             }
         }
     }
+    ClickableText(
+        text = styled,
+        style = MaterialTheme.typography.bodyLarge,
+        modifier = modifier.fillMaxWidth(),
+        onClick = { offset ->
+            val anchorHit = styled.getStringAnnotations(TAG_ANCHOR, offset, offset).firstOrNull()
+            if (anchorHit != null) {
+                onAnchor(anchorHit.item)
+            } else {
+                styled.getStringAnnotations(TAG_JUMP, offset, offset).firstOrNull()?.let { anno ->
+                    val (doc, heading) = anno.item.split("#", limit = 2)
+                        .let { p -> p[0] to p.getOrNull(1)?.takeIf { h -> h.isNotEmpty() } }
+                    onDocJump(doc, heading)
+                }
+            }
+        },
+    )
 }
+
+private const val TAG_ANCHOR = "md-anchor"
+private const val TAG_JUMP = "md-jump"
 
 @Composable
 private fun MdTableView(
@@ -261,24 +299,39 @@ private fun MdTableView(
     onDocJump: (String, String?) -> Unit,
 ) {
     val cols = maxOf(table.header.size, table.rows.maxOfOrNull { it.size } ?: 0).coerceAtLeast(1)
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
-        Row(modifier = Modifier.fillMaxWidth()) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(0.dp),
+    ) {
+        // IntrinsicSize.Min + fillMaxHeight：同行单元格等高，不再“格高不一”
+        Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
             table.header.forEachIndexed { col, cell ->
-                Box(modifier = Modifier.weight(1f).background(MaterialTheme.colorScheme.surfaceVariant).padding(8.dp)) {
+                Box(modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .padding(8.dp)) {
                     InlineLine(cell, onAnchor, onDocJump)
                 }
             }
-            repeat(cols - table.header.size) { Box(modifier = Modifier.weight(1f).background(MaterialTheme.colorScheme.surfaceVariant)) {} }
+            repeat(cols - table.header.size) {
+                Box(modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .background(MaterialTheme.colorScheme.surfaceVariant)) {}
+            }
         }
+        HorizontalDivider()
         table.rows.forEach { row ->
-            Row(modifier = Modifier.fillMaxWidth()) {
+            Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
                 row.forEachIndexed { col, cell ->
-                    Box(modifier = Modifier.weight(1f).padding(8.dp)) {
+                    Box(modifier = Modifier.weight(1f).fillMaxHeight().padding(8.dp)) {
                         InlineLine(cell, onAnchor, onDocJump)
                     }
                 }
-                repeat(cols - row.size) { Box(modifier = Modifier.weight(1f)) {} }
+                repeat(cols - row.size) { Box(modifier = Modifier.weight(1f).fillMaxHeight()) {} }
             }
+            HorizontalDivider()
         }
     }
 }

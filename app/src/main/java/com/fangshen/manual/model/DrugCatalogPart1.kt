@@ -1221,6 +1221,23 @@ internal object DrugCatalogPart1 {
     )
 
 
+    // v5.5：阿戈美拉汀（褪黑素能抗抑郁剂）
+    private val agomelatine = d(
+        key = "agomelatine", name = "阿戈美拉汀", colorArgb = 0xFF7E57C2, tabletDose = 25.toBigDecimal(),
+        doseUnit = DoseUnit.MG, managementClass = ManagementClass.RX,
+        subjectiveTags = listOf("抗抑郁剂", "镇静剂"),
+        effectTags = listOf("褪黑素受体激动剂", "血清素2C拮抗剂"),
+        moleculeTag = "萘满类衍生物", halfLifeHours = 1.5, bioavailabilityPct = 4, route = Route.ORAL,
+        tmaxHours = 1.0,
+        substrates = listOf("CYP1A2", "CYP2C9", "CYP2C19"),
+        description = "褪黑素MT1/MT2受体激动剂兼5-HT2C拮抗剂：抗抑郁同时重建睡眠-觉醒节律，不增体重、性功能障碍少、无停药综合征与成瘾性；半衰期短，抗抑郁起效仍需数周，常见头晕、嗜睡或日间困倦。经CYP1A2首过代谢、口服生物利用度仅百分之几，与氟伏沙明（强CYP1A2抑制剂）联用暴露量可升高数十倍、属禁忌；偶见转氨酶升高，须在基线与治疗期间监测肝功能，肝功能不全者禁用。",
+        attributes = listOf(DrugAttribute("抗抑郁", 3, 5), DrugAttribute("催眠", 2, 4), DrugAttribute("镇静", 2, 4), DrugAttribute("抗焦虑", 1, 3), DrugAttribute("依赖性", 0, 1)),
+        rules = listOf(
+            DoseEffectRule(25.toBigDecimal(), "镇静", 1),
+            DoseEffectRule(50.toBigDecimal(), "释然", 2, isChronic = true),
+        ),
+    )
+
     val entries: List<DrugInfo> = listOf(
         fluvoxamine, sertraline, paroxetine, alprazolam, ketamine,
         trihexyphenidyl, venlafaxine, morphine, lsd, caffeine,
@@ -1231,6 +1248,6 @@ internal object DrugCatalogPart1 {
         moclobemide, selegiline, chlorpromazine, haloperidol, perphenazine,
         fluphenazine, thioridazine, trifluoperazine, sulpiride, clozapine,
         risperidone, olanzapine, quetiapine, ziprasidone, paliperidone,
-        asenapine, lurasidone, amisulpride, aripiprazole
+        asenapine, lurasidone, amisulpride, aripiprazole, agomelatine
     )
 }

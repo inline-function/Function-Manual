@@ -58,52 +58,72 @@ object LongCapture {
             ViewGroup.LayoutParams(widthPx, ViewGroup.LayoutParams.MATCH_PARENT),
         )
 
-        // 等两帧让组合执行完毕，再以“高度不限”的方式完整测量与绘制
-        composeView.post {
+        // 反复测量到高度稳定为止：超长内容（文字换行、FlowRow、表格等）
+        // 一次测量拿不到最终高度，直接绘制会出现“尾部大片空白”。
+        val widthSpec = View.MeasureSpec.makeMeasureSpec(
+            widthPx, View.MeasureSpec.EXACTLY,
+        )
+        val heightSpec = View.MeasureSpec.makeMeasureSpec(
+            0, View.MeasureSpec.UNSPECIFIED,
+        )
+        val maxPasses = 8
+        var lastHeight = -1
+        // schedulePass 的第一次执行会在组合完成后开始
+        fun schedulePass(remaining: Int) {
             composeView.post {
                 try {
-                    val widthSpec = View.MeasureSpec.makeMeasureSpec(
-                        widthPx, View.MeasureSpec.EXACTLY,
-                    )
-                    val heightSpec = View.MeasureSpec.makeMeasureSpec(
-                        0, View.MeasureSpec.UNSPECIFIED,
-                    )
                     composeView.measure(widthSpec, heightSpec)
                     composeView.layout(0, 0, composeView.measuredWidth, composeView.measuredHeight)
-                    composeView.post {
-                        // 再测一次：让文字换行等异步测量彻底稳定
-                        composeView.measure(widthSpec, heightSpec)
-                        composeView.layout(0, 0, composeView.measuredWidth, composeView.measuredHeight)
-                        val w = composeView.measuredWidth
-                        val h = composeView.measuredHeight
-                        if (w <= 0 || h <= 0) {
-                            finish(activity, container, null, false, onDone)
-                            return@post
-                        }
-                        val bitmap = runCatching {
-                            Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888).apply {
-                                setDensity(activity.resources.displayMetrics.densityDpi)
-                            }
-                        }.getOrNull()
-                        if (bitmap == null) {
-                            finish(activity, container, null, false, onDone)
-                            return@post
-                        }
-                        val drawn = runCatching { composeView.draw(Canvas(bitmap)) }.isSuccess
-                        if (drawn) {
-                            val saved = runCatching {
-                                GalleryCapture.saveToGallery(activity, bitmap, label)
-                            }.getOrDefault(false)
-                            finish(activity, container, if (saved) null else bitmap, saved, onDone)
-                        } else {
-                            finish(activity, container, bitmap, false, onDone)
-                        }
+                    val h = composeView.measuredHeight
+                    Log.d(TAG, "测量 pass：h=$h previous=$lastHeight remaining=$remaining")
+                    if (h > 0 && h == lastHeight) {
+                        drawNow(activity, container, composeView, label, onDone)
+                    } else if (remaining > 0) {
+                        lastHeight = h
+                        schedulePass(remaining - 1)
+                    } else {
+                        Log.w(TAG, "高度未稳定，按最后一次测量绘制 h=$h")
+                        drawNow(activity, container, composeView, label, onDone)
                     }
                 } catch (t: Throwable) {
                     Log.e(TAG, "长截图失败", t)
                     finish(activity, container, null, false, onDone)
                 }
             }
+        }
+        schedulePass(maxPasses)
+    }
+
+    private fun drawNow(
+        activity: Activity,
+        container: FrameLayout,
+        composeView: ComposeView,
+        label: String,
+        onDone: (Boolean) -> Unit,
+    ) {
+        val w = composeView.measuredWidth
+        val h = composeView.measuredHeight
+        if (w <= 0 || h <= 0) {
+            finish(activity, container, null, false, onDone)
+            return
+        }
+        val bitmap = runCatching {
+            Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888).apply {
+                setDensity(activity.resources.displayMetrics.densityDpi)
+            }
+        }.getOrNull()
+        if (bitmap == null) {
+            finish(activity, container, null, false, onDone)
+            return
+        }
+        val drawn = runCatching { composeView.draw(Canvas(bitmap)) }.isSuccess
+        if (drawn) {
+            val saved = runCatching {
+                GalleryCapture.saveToGallery(activity, bitmap, label)
+            }.getOrDefault(false)
+            finish(activity, container, if (saved) null else bitmap, saved, onDone)
+        } else {
+            finish(activity, container, bitmap, false, onDone)
         }
     }
 

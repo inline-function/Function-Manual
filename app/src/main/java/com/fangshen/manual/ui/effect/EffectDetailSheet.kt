@@ -114,6 +114,31 @@ fun EffectDetailSheet(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                // v5.5：叠加时间（距完整一个半衰期）与消退时间（5 个半衰期，期间无补充则清除）
+                if (group != null && group.sourceHalfLives.isNotEmpty()) {
+                    val nowMs = remember { System.currentTimeMillis() }
+                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        group.sourceHalfLives.entries.forEach { (drugName, tHalf) ->
+                            val last = group.sourceLastDose[drugName] ?: 0L
+                            val elapsedH = (nowMs - last) / 3_600_000.0
+                            val stackRemain = (tHalf - elapsedH).coerceAtLeast(0.0)
+                            val clearRemain = (tHalf * 5.0 - elapsedH).coerceAtLeast(0.0)
+                            Text(
+                                text = "叠加时间：" + drugName + " 距完整一个半衰期" +
+                                    (if (stackRemain <= 0.0) "已满" else "还剩" + fmtHours(stackRemain)) +
+                                    "（t½ = " + fmtHours(tHalf) + "）",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Text(
+                                text = "消退时间：5 个半衰期" +
+                                    (if (clearRemain <= 0.0) "已满，无补充即清除" else "后清除，还需" + fmtHours(clearRemain) + "（无补充时）"),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
                 if (pack != null && group?.members?.isNotEmpty() == true) {
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -182,3 +207,7 @@ private fun EffectMemberChip(
         )
     }
 }
+
+/** 小时数格式化：≥1 小时保留一位小数，否则换算成分钟 */
+private fun fmtHours(hours: Double): String =
+    if (hours >= 1.0) String.format("%.1f小时", hours) else ((hours * 60).toInt().toString() + "分钟")

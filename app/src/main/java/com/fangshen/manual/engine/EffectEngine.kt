@@ -52,6 +52,10 @@ object EffectEngine {
         val sources: List<String>,      // 贡献来源（药物名）
         /** 各来源药物贡献的权重（药物名 -> 权重） */
         val sourceWeights: Map<String, Int> = emptyMap(),
+        /** v5.5：来源药物的半衰期（小时，药名 -> t½），供详情抽屉显示叠加/消退时间 */
+        val sourceHalfLives: Map<String, Double> = emptyMap(),
+        /** v5.5：来源药物的最后一次服药时刻（epoch 毫秒），供详情抽屉显示距完整半衰期的剩余时间 */
+        val sourceLastDose: Map<String, Long> = emptyMap(),
         /** 是否属于效应包的成员、因而不单独展示 */
         val absorbedByPack: Boolean = false,
         /** 展示用急慢性：同效应急慢都触发时只显示急性（权重已叠加） */
@@ -86,6 +90,14 @@ object EffectEngine {
         val weightBySource = mutableMapOf<String, MutableMap<String, Int>>()
         // 该效应至少有一条急性规则触发（用于急/慢性去重展示）
         val hasAcute = mutableSetOf<String>()
+        // v5.5：药名 -> (半衰期小时, 最近一次服药时刻)，供详情抽屉的时间提示
+        val halfLifeByName = mutableMapOf<String, Double>()
+        val lastDoseByName = mutableMapOf<String, Long>()
+        for (d0 in doses) {
+            halfLifeByName[d0.drug.name] = d0.drug.halfLifeHours
+            val prev = lastDoseByName[d0.drug.name] ?: 0L
+            if (d0.time > prev) lastDoseByName[d0.drug.name] = d0.time
+        }
         // 成瘾游标状态（只算声明了成瘾性的药）
         val addictStates = AddictionEngine.statesAtNow(
             drugs = doses.map { it.drug }.distinct(),
@@ -240,6 +252,8 @@ object EffectEngine {
                     def = EffectCatalog.def(member),
                     members = emptyList(),
                     sources = (memberSources[member] ?: emptySet()).toList(),
+                    sourceHalfLives = ((memberSources[member] ?: emptySet()).toList()).associate { it to (halfLifeByName[it] ?: 0.0) },
+                    sourceLastDose = ((memberSources[member] ?: emptySet()).toList()).associate { it to (lastDoseByName[it] ?: 0L) },
                     sourceWeights = memberSourceWeights[member] ?: emptyMap(),
                 )
             }
@@ -252,6 +266,8 @@ object EffectEngine {
                 def = EffectCatalog.def(pack),
                 members = memberGroups,
                 sources = (sources[pack] ?: emptySet()).toList(),
+                sourceHalfLives = ((sources[pack] ?: emptySet()).toList()).associate { it to (halfLifeByName[it] ?: 0.0) },
+                sourceLastDose = ((sources[pack] ?: emptySet()).toList()).associate { it to (lastDoseByName[it] ?: 0L) },
                 sourceWeights = weightBySource[pack] ?: emptyMap(),
             )
         }
@@ -271,6 +287,8 @@ object EffectEngine {
                 def = def,
                 members = emptyList(),
                 sources = (sources[name] ?: emptySet()).toList(),
+                sourceHalfLives = ((sources[name] ?: emptySet()).toList()).associate { it to (halfLifeByName[it] ?: 0.0) },
+                sourceLastDose = ((sources[name] ?: emptySet()).toList()).associate { it to (lastDoseByName[it] ?: 0L) },
                 sourceWeights = weightBySource[name] ?: emptyMap(),
             )
         }

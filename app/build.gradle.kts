@@ -22,8 +22,8 @@ android {
         applicationId = "com.fangshen.manual"
         minSdk = 24
         targetSdk = 35
-        versionCode = 7
-        versionName = "5.0"
+        versionCode = 8
+        versionName = "3.0.0"
         vectorDrawables { useSupportLibrary = true }
     }
 
