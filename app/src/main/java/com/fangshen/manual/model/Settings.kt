@@ -9,8 +9,6 @@ import org.json.JSONObject
 data class AppSettings(
     /** 成瘾游标线常显（否则仅在高亮药物曲线时显示） */
     val showAddictionCursor: Boolean = false,
-    /** 服药记录卡片显示精麻标识 */
-    val showPsychotropicBadge: Boolean = false,
     /** 浓度图像的过渡动画（单位切换/数据变化时的渐变） */
     val chartAnimation: Boolean = true,
     /** 效应展示开关 */
@@ -115,14 +113,12 @@ data class CustomInteraction(
 
 fun AppSettings.toJson(): JSONObject = JSONObject().apply {
     put("showAddictionCursor", showAddictionCursor)
-    put("showPsychotropicBadge", showPsychotropicBadge)
     put("chartAnimation", chartAnimation)
     put("effectDisplay", effectDisplay.toJson())
 }
 
 fun parseSettings(o: JSONObject): AppSettings = AppSettings(
     showAddictionCursor = o.optBoolean("showAddictionCursor", false),
-    showPsychotropicBadge = o.optBoolean("showPsychotropicBadge", false),
     chartAnimation = o.optBoolean("chartAnimation", true),
     effectDisplay = o.optJSONObject("effectDisplay")?.let { parseEffectDisplay(it) } ?: EffectDisplay(),
 )

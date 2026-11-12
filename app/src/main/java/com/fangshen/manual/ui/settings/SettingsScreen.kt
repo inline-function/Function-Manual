@@ -76,13 +76,8 @@ fun SettingsScreen(
             }
             item {
                 SwitchRow(
-                    title = "显示精麻标识",
-                    subtitle = "服药记录卡片中，精神药品/麻醉药品药名后标注图标",
-                    checked = settings.showPsychotropicBadge,
-                ) { app.contentRepository.updateSettings(settings.copy(showPsychotropicBadge = it)) }
-                SwitchRow(
                     title = "浓度图像动画",
-                    subtitle = "单位切换或数据更新时图像渐变；关闭则瞬时刷新，不产生线段变形",
+                    subtitle = "关闭后切换图像瞬时完成",
                     checked = settings.chartAnimation,
                 ) { app.contentRepository.updateSettings(settings.copy(chartAnimation = it)) }
             }
