@@ -186,6 +186,7 @@ fun HomeScreen(
                         highlightDrugId = if (highlightDrugId == id) null else id
                     },
                     showAddictionCursor = settings.showAddictionCursor,
+        chartAnimation = settings.chartAnimation,
                     now = if (nowTick > state.now) nowTick else state.now,
                 )
 

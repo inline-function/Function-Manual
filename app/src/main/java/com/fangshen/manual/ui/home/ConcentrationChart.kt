@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -116,6 +117,8 @@ fun ConcentrationChart(
     onLegendClick: (String) -> Unit,
     /** 成瘾游标线常显（设置项；关闭时仅高亮药物曲线时显示其游标线） */
     showAddictionCursor: Boolean = false,
+    /** 浓度图像过渡动画（单位切换/数据更新时）；关闭则瞬时刷新 */
+    chartAnimation: Boolean = true,
     modifier: Modifier = Modifier,
     now: Long,
 ) {
@@ -182,6 +185,7 @@ fun ConcentrationChart(
                 highlightedDrugId = highlightedDrugId,
                 allDrugs = drugs,
                 showAddictionCursor = showAddictionCursor,
+        chartAnimation = chartAnimation,
                 modifier = Modifier.fillMaxSize(),
             )
             // 顶层拦截点击：保证图表任何状态下短按都能循环切换剂量单位
@@ -247,6 +251,8 @@ private fun ChartCanvas(
     allDrugs: List<DrugInfo> = emptyList(),
     /** 成瘾游标线常显（否则仅在高亮药物时显示该药的线） */
     showAddictionCursor: Boolean = false,
+    /** 浓度图像过渡动画 */
+    chartAnimation: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val modelProducer = remember { CartesianChartModelProducer() }
@@ -408,11 +414,14 @@ private fun ChartCanvas(
                 // 固定纵轴刻度间距：默认按标签高度排出的刻度过密时，g/µg 单位下
                 // 会舍入成一排相同的“0g”
                 itemPlacer = remember { FixedVerticalTicksItemPlacer() },
+                // 亮色主题下显式使用 onSurface，避免 Vico 默认白色文字
+                label = rememberTextComponent(color = MaterialTheme.colorScheme.onSurface),
             ),
             bottomAxis = HorizontalAxis.rememberBottom(
                 valueFormatter = remember { MinuteFormatter() },
                 itemPlacer = remember { FixedTicksItemPlacer() },
                 guideline = remember { LineComponent(fill = Fill(0xFFA79FB8.toInt()), thicknessDp = 1.4f) },
+                label = rememberTextComponent(color = MaterialTheme.colorScheme.onSurface),
             ),
         ),
         modelProducer = modelProducer,
@@ -422,6 +431,7 @@ private fun ChartCanvas(
             minZoom = Zoom.Content,
             maxZoom = Zoom.Content,
         ),
+        animationSpec = if (chartAnimation) tween<Float>(durationMillis = 500) else null,
         modifier = modifier.fillMaxSize(),
     )
 }
