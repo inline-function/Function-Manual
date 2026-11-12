@@ -155,6 +155,7 @@ fun parseReport(json: String): Report {
     }
     val characters = head?.optJSONArray("character")?.toCharacterList() ?: emptyList()
     val body = o.optJSONArray("body")?.toEpisodeList() ?: emptyList()
+    val fragments = o.optJSONArray("fragments")?.toFragmentList() ?: emptyList()
     return Report(
         head = ReportHead(
             name = str("name"),
@@ -165,8 +166,39 @@ fun parseReport(json: String): Report {
             conclusion = str("conclusion"),
         ),
         body = body,
+        fragments = fragments,
     )
 }
+
+/** v4 片段格式解析：type=scene / type=dialog，对话条目 kind=say / kind=event */
+private fun JSONArray.toFragmentList(): List<ReportFragment> =
+    List(length()) { i ->
+        val f = optJSONObject(i) ?: return@List null
+        when (f.optString("type")) {
+            "scene" -> ReportFragment.Scene(
+                time = f.optString("time", "").trim(),
+                place = f.optString("place", "").trim(),
+                description = f.optString("description", "").trim(),
+            )
+            "dialog" -> ReportFragment.Dialog(items = f.optJSONArray("items").toDialogItems())
+            else -> null
+        }
+    }.filterNotNull()
+/** v4 对话条目解析：kind=say（须有发言人）/ kind=event */
+private fun JSONArray?.toDialogItems(): List<DialogItem> =
+    if (this == null) emptyList()
+    else List(length()) { k -> optJSONObject(k) }
+        .filterNotNull()
+        .mapNotNull { item ->
+            when (item.optString("kind")) {
+                "say" -> {
+                    val name = item.optString("name", "").trim()
+                    if (name.isEmpty()) null else DialogItem.Say(name, item.optString("content", "").trim())
+                }
+                else -> DialogItem.Event(item.optString("content", "").trim())
+            }
+        }
+
 
 private fun JSONArray.toCharacterList(): List<ReportCharacter> =
     List(length()) { i ->

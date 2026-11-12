@@ -197,6 +197,6 @@ private fun DrawerItem(
         selected = false,
         onClick = { onNavigate(route) },
         colors = NavigationDrawerItemDefaults.colors(),
-        modifier = Modifier.padding(vertical = 2.dp),
+        modifier = Modifier.padding(vertical = 0.dp),
     )
 }
