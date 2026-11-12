@@ -30,6 +30,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.fangshen.manual.model.DialogItem
 import com.fangshen.manual.model.Report
@@ -213,51 +214,65 @@ private fun SceneCard(fragment: ReportFragment.Scene) {
 }
 
 /**
- * 对话片段：QQ 聊天式——首报告人（head.name）靠右，其余人靠左；
- * 事件条目居中、无卡片背景（类似 QQ 系统文本）。
+ * 对话片段：整段以圆角卡片包裹；QQ 聊天式——首报告人（head.name）靠右，其余人靠左；
+ * 事件条目居中、无气泡（类似 QQ 系统文本）。
  */
 @Composable
 private fun DialogBlock(fragment: ReportFragment.Dialog, author: String) {
-    Column(
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        ),
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        fragment.items.forEach { item ->
-            when (item) {
-                is DialogItem.Event -> Text(
-                    text = item.content,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = QuoteGray,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                )
-                is DialogItem.Say -> {
-                    val isAuthor = author.isNotBlank() && item.name == author
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = if (isAuthor) Arrangement.End else Arrangement.Start,
-                    ) {
-                        Column(
-                            horizontalAlignment = if (isAuthor) Alignment.End else Alignment.Start,
-                            modifier = Modifier.width(IntrinsicSize.Max).fillMaxWidth(0.8f),
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            fragment.items.forEachIndexed { index, item ->
+                when (item) {
+                    is DialogItem.Event -> Text(
+                        text = item.content,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = QuoteGray,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                    )
+                    is DialogItem.Say -> {
+                        val isAuthor = author.isNotBlank() && item.name == author
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = if (isAuthor) Arrangement.End else Arrangement.Start,
                         ) {
-                            Text(
-                                text = item.name,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = QuoteGray,
-                                modifier = Modifier.padding(bottom = 3.dp),
-                            )
-                            Surface(
-                                shape = RoundedCornerShape(14.dp),
-                                color = if (isAuthor) BubbleAuthor else BubbleOther,
+                            Column(
+                                horizontalAlignment = if (isAuthor) Alignment.End else Alignment.Start,
+                                modifier = Modifier.width(IntrinsicSize.Max).fillMaxWidth(0.8f),
                             ) {
-                                Text(
-                                    text = parseInlineMd(item.content),
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = if (isAuthor) Color.White else MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                )
+                                // 连续同发言人只在第一条标出名字
+                                val prev = fragment.items.getOrNull(index - 1)
+                                val showName = prev !is DialogItem.Say || prev.name != item.name
+                                if (showName) {
+                                    Text(
+                                        text = item.name,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = QuoteGray,
+                                        modifier = Modifier.padding(bottom = 3.dp),
+                                    )
+                                }
+                                Surface(
+                                    shape = RoundedCornerShape(14.dp),
+                                    color = if (isAuthor) BubbleAuthor else BubbleOther,
+                                ) {
+                                    Text(
+                                        text = parseInlineMd(item.content),
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = if (isAuthor) Color.White else MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    )
+                                }
                             }
                         }
                     }
