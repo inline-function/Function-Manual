@@ -11,6 +11,8 @@ internal object DrugCatalogPart2 {
         moleculeTag = "喹诺酮类", halfLifeHours = 91.0, bioavailabilityPct = 95, route = Route.ORAL,
         tmaxHours = 4.0,
         substrates = listOf("CYP2D6", "CYP3A4"),
+        description = "依匹哌唑为多巴胺D2与D3受体部分激动剂，兼有5-HT1A受体部分激动及5-HT2A受体拮抗作用，临床用于精神分裂症的核心症状治疗以及抑郁障碍的辅助增效治疗；其锥体外系反应、镇静与代谢综合征风险均低于奥氮平，但静坐不能仍较常见，与CYP2D6强抑制剂帕罗西汀、氟西汀或CYP3A4抑制剂联用可显著升高血药浓度，需相应减量。",
+        attributes = listOf(DrugAttribute("抗精神病", 3, 5), DrugAttribute("抗抑郁", 1, 4), DrugAttribute("心境稳定", 1, 3), DrugAttribute("镇静", 1, 3), DrugAttribute("锥体外系反应", -1, 3)),
         rules = listOf(
             DoseEffectRule(0.5.toBigDecimal(), "欣快", -1),
             DoseEffectRule(0.5.toBigDecimal(), "专注", 1),
@@ -34,6 +36,8 @@ internal object DrugCatalogPart2 {
         moleculeTag = "哌嗪类", halfLifeHours = 336.0, bioavailabilityPct = 49, route = Route.ORAL,
         tmaxHours = 1.5,
         substrates = listOf("CYP3A4", "CYP2D6"),
+        description = "卡利拉嗪为多巴胺D3与D2受体部分激动剂，对D3受体的亲和力显著高于D2，兼有5-HT1A受体部分激动及5-HT2A/2B受体拮抗作用，适用于精神分裂症、双相I型躁狂与混合发作、双相抑郁发作及抑郁障碍的辅助治疗；对残留症状与阴性症状的改善优于利培酮，但静坐不能与锥体外系反应的发生率明显高于多数非经典抗精神病药，与CYP3A4强抑制剂伊曲康唑联用时须减量。",
+        attributes = listOf(DrugAttribute("抗精神病", 3, 5), DrugAttribute("心境稳定", 2, 5), DrugAttribute("抗抑郁", 1, 4), DrugAttribute("镇静", 1, 3), DrugAttribute("锥体外系反应", -1, 4)),
         rules = listOf(
             DoseEffectRule(1.5.toBigDecimal(), "欣快", -1),
             DoseEffectRule(1.5.toBigDecimal(), "专注", 1),
@@ -56,6 +60,8 @@ internal object DrugCatalogPart2 {
         effectTags = listOf("锂盐"),
         moleculeTag = "锂盐", halfLifeHours = 24.0, bioavailabilityPct = 100, route = Route.ORAL,
         tmaxHours = 2.0,
+        description = "碳酸锂通过抑制肌醇单磷酸酶与GSK-3β并稳定第二信使系统发挥心境稳定作用，为双相障碍躁狂发作、维持期治疗及抑郁增效的一线用药；治疗窗窄（0.6至1.2 mmol/L），需监测血锂浓度、肾功能与甲状腺功能，非甾体抗炎药、噻嗪类利尿剂及普利类降压药可显著升高血锂浓度致中毒。",
+        attributes = listOf(DrugAttribute("心境稳定", 3, 5), DrugAttribute("抗躁狂", 4, 5), DrugAttribute("抗抑郁", 1, 3), DrugAttribute("镇静", 0, 2), DrugAttribute("促认知", 0, 2)),
         rules = listOf(
             DoseEffectRule(300.toBigDecimal(), "释然", 1),
             DoseEffectRule(300.toBigDecimal(), "欣快", -1),
@@ -82,6 +88,8 @@ internal object DrugCatalogPart2 {
         tmaxHours = 4.0,
         substrates = listOf("CYP2C9"),
         inhibitors = listOf("CYP2C9", "CYP2C19"),
+        description = "丙戊酸钠通过阻断电压门控钠通道、增强GABA能传导并抑制组蛋白去乙酰化酶，广泛用于癫痫、双相障碍躁狂发作与偏头痛预防；可致体重增加、肝损伤与血小板减少，妊娠期显著增加神经管畸形与后代自闭症风险，为CYP2C9/2C19抑制剂，与苯妥英、卡马西平、拉莫三嗪存在药动学相互作用。",
+        attributes = listOf(DrugAttribute("心境稳定", 3, 5), DrugAttribute("抗躁狂", 2, 5), DrugAttribute("抗癫痫", 3, 5), DrugAttribute("镇静", 1, 3)),
         rules = listOf(
             DoseEffectRule(200.toBigDecimal(), "欣快", -1),
             DoseEffectRule(200.toBigDecimal(), "释然", 1),
@@ -109,6 +117,8 @@ internal object DrugCatalogPart2 {
         autoInduction = AutoInduction(daysToSteady = 7.0, maxFactor = 2.3),
         substrates = listOf("CYP3A4", "CYP2C9", "CYP1A2"),
         inducers = listOf("CYP3A4", "CYP2C9", "CYP1A2", "CYP2B6", "CYP2C19"),
+        description = "卡马西平为电压门控钠通道阻滞剂并具有GABA能增强作用，用于癫痫、双相障碍及三叉神经痛等神经病理性疼痛；其为强效CYP3A4/2C9诱导剂，与口服避孕药、华法林、奥氮平及他汀类联用可显著降低后者血药浓度，携带HLA-B*1502等位基因者用药可致Stevens-Johnson综合征，亚裔人群宜先行基因筛查。",
+        attributes = listOf(DrugAttribute("抗癫痫", 3, 5), DrugAttribute("心境稳定", 2, 5), DrugAttribute("抗躁狂", 2, 4), DrugAttribute("镇痛", 1, 4), DrugAttribute("镇静", 1, 3)),
         rules = listOf(
             DoseEffectRule(100.toBigDecimal(), "欣快", -1),
             DoseEffectRule(100.toBigDecimal(), "释然", 1),
@@ -136,6 +146,8 @@ internal object DrugCatalogPart2 {
         tmaxHours = 3.0,
         substrates = listOf("UGT1A4"),
         inducers = listOf("UGT1A4"),
+        description = "拉莫三嗪通过阻断电压门控钠通道减少谷氨酸等兴奋性递质释放，为双相障碍抑郁发作与维持期治疗的一线心境稳定剂，亦用于部分性与全面性癫痫；与丙戊酸钠联用时后者抑制其代谢、显著升高血药浓度，须减量并缓慢滴定；最需警惕的不良反应为皮疹，严重者可进展为Stevens-Johnson综合征。",
+        attributes = listOf(DrugAttribute("心境稳定", 2, 5), DrugAttribute("抗抑郁", 2, 4), DrugAttribute("抗躁狂", 0, 2), DrugAttribute("抗癫痫", 3, 5), DrugAttribute("镇静", 0, 3)),
         rules = listOf(
             DoseEffectRule(25.toBigDecimal(), "欣快", -1),
             DoseEffectRule(25.toBigDecimal(), "释然", 1),
@@ -162,6 +174,8 @@ internal object DrugCatalogPart2 {
         tmaxHours = 4.5,
         substrates = listOf("CYP3A4", "CYP2C19"),
         inhibitors = listOf("CYP2C19"),
+        description = "奥卡西平为卡马西平的10-酮基衍生物，经肝脏转化为活性代谢物阻断电压门控钠通道，用于部分性及全面性强直阵挛癫痫；对CYP3A4的诱导作用较卡马西平弱、药物相互作用较少，但低钠血症较为常见，与炔雌醇联用可降低口服避孕药效能，肾功能不全者需减量。",
+        attributes = listOf(DrugAttribute("抗癫痫", 3, 5), DrugAttribute("心境稳定", 1, 3), DrugAttribute("抗躁狂", 0, 2), DrugAttribute("镇痛", 1, 2), DrugAttribute("镇静", 0, 3)),
         rules = listOf(
             DoseEffectRule(150.toBigDecimal(), "欣快", -1),
             DoseEffectRule(150.toBigDecimal(), "释然", 1),
@@ -188,6 +202,9 @@ internal object DrugCatalogPart2 {
         activeMetabolites = listOf(ActiveMetabolite(key = "nordazepam", fmPct = 96)),
         tmaxHours = 1.5,
         substrates = listOf("CYP3A4", "CYP2C19"),
+        addictive = true, addictionRatePerHour = 0.015, toleranceGroup = "GABA能耐受",
+        description = "地西泮为经典苯二氮卓类药物，变构增强GABA-A受体氯离子内流产生中枢抑制，用于焦虑症、癫痫持续状态、酒精戒断及骨骼肌痉挛；起效快且半衰期长，其活性代谢物去甲地西泮可致次日残留效应，与CYP3A4抑制剂红霉素、氟康唑、利托那韦联用可致过度镇静，与乙醇或阿片类联用显著增加呼吸抑制与致死风险。",
+        attributes = listOf(DrugAttribute("抗焦虑", 4, 5), DrugAttribute("镇静", 3, 5), DrugAttribute("催眠", 2, 4), DrugAttribute("抗惊厥", 3, 5), DrugAttribute("依赖性", -1, 4)),
         rules = listOf(
             DoseEffectRule(2.toBigDecimal(), "镇静", 2),
             DoseEffectRule(2.toBigDecimal(), "释然", 1),
@@ -211,6 +228,9 @@ internal object DrugCatalogPart2 {
         moleculeTag = "苯二氮卓类", halfLifeHours = 15.0, bioavailabilityPct = 90, route = Route.ORAL,
         tmaxHours = 2.0,
         substrates = listOf("UGT2B15"),
+        addictive = true, addictionRatePerHour = 0.02, toleranceGroup = "GABA能耐受",
+        description = "劳拉西泮为苯二氮卓类抗焦虑药，主要经II相葡萄糖醛酸结合代谢、不受细胞色素P450酶系统影响，用于焦虑障碍、癫痫持续状态及围术期镇静；起效迅速、药物相互作用少，故肝功能不全者优选，但长期使用仍可产生耐受、依赖与停药反跳，与乙醇、阿片类或其他中枢抑制剂联用可显著增加呼吸抑制风险。",
+        attributes = listOf(DrugAttribute("抗焦虑", 4, 5), DrugAttribute("镇静", 3, 5), DrugAttribute("催眠", 2, 4), DrugAttribute("抗惊厥", 3, 5), DrugAttribute("依赖性", -1, 4)),
         rules = listOf(
             DoseEffectRule(0.5.toBigDecimal(), "镇静", 1),
             DoseEffectRule(0.5.toBigDecimal(), "释然", 1),
@@ -234,6 +254,9 @@ internal object DrugCatalogPart2 {
         moleculeTag = "苯二氮卓类", halfLifeHours = 35.0, bioavailabilityPct = 90, route = Route.ORAL,
         tmaxHours = 2.0,
         substrates = listOf("CYP3A4"),
+        addictive = true, addictionRatePerHour = 0.02, toleranceGroup = "GABA能耐受",
+        description = "氯硝西泮为长效苯二氮卓类，增强GABA-A受体介导的抑制性传导，用于惊恐障碍、广泛性焦虑、各类癫痫（尤其失神与肌阵挛发作）及快动眼睡眠行为障碍；半衰期长、镇静作用较强，骤停可诱发戒断症状与癫痫反跳，与吩噻嗪类、单胺氧化酶抑制剂及乙醇联用可增强中枢抑制。",
+        attributes = listOf(DrugAttribute("抗焦虑", 4, 5), DrugAttribute("抗强迫", 0, 3), DrugAttribute("镇静", 3, 5), DrugAttribute("抗惊厥", 4, 5), DrugAttribute("依赖性", -1, 4)),
         rules = listOf(
             DoseEffectRule(0.25.toBigDecimal(), "镇静", 1),
             DoseEffectRule(0.25.toBigDecimal(), "释然", 1),
@@ -259,6 +282,9 @@ internal object DrugCatalogPart2 {
         moleculeTag = "苯二氮卓类", halfLifeHours = 15.0, bioavailabilityPct = 90, route = Route.ORAL,
         tmaxHours = 2.0,
         substrates = listOf("CYP3A4", "CYP2C19"),
+        addictive = true, addictionRatePerHour = 0.02, toleranceGroup = "GABA能耐受",
+        description = "艾司唑仑为中效苯二氮卓类催眠药，作用于GABA-A受体缩短入睡时间、延长总睡眠时间，用于各类失眠及焦虑伴发的睡眠障碍；长期连续使用可致耐受、依赖与停药反跳，老年人易发生跌倒、宿醉感与认知损害，与中枢抑制剂、乙醇及阿片类联用显著增加呼吸抑制与意外风险。",
+        attributes = listOf(DrugAttribute("催眠", 4, 5), DrugAttribute("镇静", 3, 5), DrugAttribute("抗焦虑", 2, 4), DrugAttribute("抗惊厥", 1, 3), DrugAttribute("依赖性", -1, 4)),
         rules = listOf(
             DoseEffectRule(1.toBigDecimal(), "镇静", 2),
             DoseEffectRule(1.toBigDecimal(), "嗜睡", 1),
@@ -280,6 +306,9 @@ internal object DrugCatalogPart2 {
         moleculeTag = "咪唑并吡啶类", halfLifeHours = 2.5, bioavailabilityPct = 70, route = Route.ORAL,
         tmaxHours = 1.5,
         substrates = listOf("CYP3A4", "CYP2C9", "CYP1A2"),
+        addictive = true, addictionRatePerHour = 0.03, toleranceGroup = "GABA能耐受",
+        description = "唑吡坦为非苯二氮卓类催眠药，选择性激动GABA-A受体α1亚单位快速诱导入睡，用于短期失眠治疗；半衰期短（约2至3小时）、次日宿醉效应轻，但存在梦游、夜食、驾驶等复杂睡眠行为风险，长期使用仍可产生依赖与停药反跳，与乙醇、抗抑郁药及阿片类联用加重中枢抑制。",
+        attributes = listOf(DrugAttribute("催眠", 4, 5), DrugAttribute("镇静", 2, 4), DrugAttribute("抗焦虑", 0, 2), DrugAttribute("依赖性", -1, 3)),
         rules = listOf(
             DoseEffectRule(5.toBigDecimal(), "镇静", 2),
             DoseEffectRule(5.toBigDecimal(), "嗜睡", 1),
@@ -302,6 +331,9 @@ internal object DrugCatalogPart2 {
         moleculeTag = "环吡咯酮类", halfLifeHours = 5.0, bioavailabilityPct = 78, route = Route.ORAL,
         tmaxHours = 1.5,
         substrates = listOf("CYP3A4", "CYP2C8"),
+        addictive = true, addictionRatePerHour = 0.02, toleranceGroup = "GABA能耐受",
+        description = "佐匹克隆为环吡咯酮类催眠药，作用于GABA-A受体缩短入睡潜伏期、减少夜间觉醒并改善睡眠维持，用于各种失眠症；其部分代谢依赖CYP3A4，与红霉素、克拉霉素等抑制剂联用可升高血药浓度，常见口苦、口干及味觉异常，次日残余效应较唑吡坦明显，长期连续用药可产生依赖与停药反跳，与中枢抑制剂及乙醇联用加重过度镇静，老年人应减量并警惕跌倒。",
+        attributes = listOf(DrugAttribute("催眠", 4, 5), DrugAttribute("镇静", 1, 4), DrugAttribute("抗焦虑", 0, 2), DrugAttribute("依赖性", -1, 3)),
         rules = listOf(
             DoseEffectRule(3.75.toBigDecimal(), "镇静", 2),
             DoseEffectRule(3.75.toBigDecimal(), "嗜睡", 1),
@@ -323,6 +355,9 @@ internal object DrugCatalogPart2 {
         moleculeTag = "环吡咯酮类", halfLifeHours = 6.0, bioavailabilityPct = 78, route = Route.ORAL,
         tmaxHours = 1.5,
         substrates = listOf("CYP3A4", "CYP2C8"),
+        addictive = true, addictionRatePerHour = 0.02, toleranceGroup = "GABA能耐受",
+        description = "右佐匹克隆为佐匹克隆的单一右旋异构体，选择性增强GABA-A受体介导的氯离子内流，用于入睡困难与睡眠维持障碍，是少数获批长期使用的非苯二氮卓类催眠药；起效快、半衰期约6小时，剂量相关的典型不良反应为口苦与次日残留嗜睡，与其他中枢抑制剂合用可致过度镇静。",
+        attributes = listOf(DrugAttribute("催眠", 4, 5), DrugAttribute("镇静", 1, 3), DrugAttribute("抗焦虑", 0, 2), DrugAttribute("依赖性", -1, 3)),
         rules = listOf(
             DoseEffectRule(1.toBigDecimal(), "镇静", 1),
             DoseEffectRule(1.toBigDecimal(), "嗜睡", 1),
@@ -344,6 +379,8 @@ internal object DrugCatalogPart2 {
         moleculeTag = "螺环类", halfLifeHours = 2.5, bioavailabilityPct = 4, route = Route.ORAL,
         tmaxHours = 1.0,
         substrates = listOf("CYP3A4", "CYP2D6"),
+        description = "丁螺环酮为5-HT1A受体部分激动剂，无GABA能作用，用于广泛性焦虑障碍及抑郁障碍的增效治疗；起效慢（1至2周）、无镇静、催眠与肌肉松弛作用，不产生依赖与停药综合征，与单胺氧化酶抑制剂联用可致血压升高，与氟西汀、氟伏沙明及红霉素等CYP3A4抑制剂联用需减量。",
+        attributes = listOf(DrugAttribute("抗焦虑", 2, 4), DrugAttribute("抗抑郁", 1, 3), DrugAttribute("镇静", 0, 1), DrugAttribute("催眠", 0, 1), DrugAttribute("依赖性", -1, 0)),
         rules = listOf(
             DoseEffectRule(5.toBigDecimal(), "释然", 1),
             DoseEffectRule(10.toBigDecimal(), "释然", 2),
@@ -367,6 +404,8 @@ internal object DrugCatalogPart2 {
         moleculeTag = "螺环类", halfLifeHours = 3.0, bioavailabilityPct = 15, route = Route.ORAL,
         tmaxHours = 1.5,
         substrates = listOf("CYP3A4"),
+        description = "坦度螺酮为高选择性5-HT1A受体部分激动剂，用于广泛性焦虑障碍及自主神经功能紊乱，可辅助用于精神分裂症阴性症状与抑郁的治疗；起效缓慢、镇静与依赖风险低，常见头晕、嗜睡及轻微胃肠道反应，严重肝肾功能障碍者慎用，与单胺氧化酶抑制剂联用应谨慎。",
+        attributes = listOf(DrugAttribute("抗焦虑", 2, 4), DrugAttribute("抗抑郁", 0, 2), DrugAttribute("镇静", 0, 1), DrugAttribute("依赖性", -1, 0)),
         rules = listOf(
             DoseEffectRule(10.toBigDecimal(), "释然", 1),
             DoseEffectRule(20.toBigDecimal(), "释然", 1),
@@ -389,6 +428,9 @@ internal object DrugCatalogPart2 {
         tmaxHours = 2.0,
         substrates = listOf("CYP2C9", "CYP3A4", "CYP2C19"),
         inducers = listOf("CYP3A4", "CYP2C9", "CYP2C19", "CYP1A2", "CYP2B6"),
+        addictive = true, addictionRatePerHour = 0.02, toleranceGroup = "GABA能耐受",
+        description = "苯巴比妥为长效巴比妥类，增强并延长GABA-A受体氯离子通道开放，用于失眠、癫痫（尤其强直阵挛与部分性发作）及新生儿惊厥；治疗指数低，过量可致呼吸中枢抑制甚至死亡，长期用药快速耐受并产生依赖与停药，其为强效肝酶诱导剂，与华法林、口服避孕药、苯妥英等大量药物存在相互作用。",
+        attributes = listOf(DrugAttribute("催眠", 3, 5), DrugAttribute("镇静", 3, 5), DrugAttribute("抗癫痫", 3, 5), DrugAttribute("抗惊厥", 4, 5), DrugAttribute("依赖性", -1, 5), DrugAttribute("呼吸抑制", -1, 4)),
         rules = listOf(
             DoseEffectRule(15.toBigDecimal(), "镇静", 2),
             DoseEffectRule(15.toBigDecimal(), "嗜睡", 1),
@@ -413,6 +455,8 @@ internal object DrugCatalogPart2 {
         moleculeTag = "吩噻嗪类", halfLifeHours = 10.0, bioavailabilityPct = 25, route = Route.ORAL,
         tmaxHours = 3.0,
         substrates = listOf("CYP2D6"),
+        description = "异丙嗪为吩噻嗪类H1受体拮抗剂，兼具外周与中枢抗组胺、抗胆碱及轻度抗多巴胺作用，用于过敏性疾病、晕动症、恶心呕吐及围术期镇静；易透过血脑屏障产生显著镇静与次日嗜睡，儿童与老年人可发生锥体外系反应、抗胆碱综合征及体位性低血压，与中枢抑制剂及抗胆碱药联用作用叠加。",
+        attributes = listOf(DrugAttribute("镇静", 3, 5), DrugAttribute("止吐", 3, 5), DrugAttribute("抗胆碱", 2, 4), DrugAttribute("镇咳", 1, 3), DrugAttribute("锥体外系反应", -1, 2)),
         rules = listOf(
             DoseEffectRule(6.25.toBigDecimal(), "镇静", 2),
             DoseEffectRule(12.5.toBigDecimal(), "镇静", 2),
@@ -436,6 +480,8 @@ internal object DrugCatalogPart2 {
         effectTags = listOf("抗胆碱能剂"),
         moleculeTag = "托品烷类", halfLifeHours = 5.0, bioavailabilityPct = 40, route = Route.ORAL,
         tmaxHours = 2.0,
+        description = "苯扎托品为中枢M1型抗胆碱药，阻断纹状体胆碱能活性以恢复多巴胺-胆碱平衡，用于抗精神病药所致锥体外系反应与帕金森病；可改善震颤、强直与流涎，常见口干、视物模糊、便秘与尿潴留，老年人易出现记忆损害、谵妄与幻觉，与其他抗胆碱药及金刚烷胺联用增加精神症状风险。",
+        attributes = listOf(DrugAttribute("抗胆碱", 4, 5), DrugAttribute("改善锥体外系反应", -1, 5), DrugAttribute("镇静", 1, 2), DrugAttribute("认知损害风险", -1, 3)),
         rules = listOf(
             DoseEffectRule(0.5.toBigDecimal(), "口干", 1),
             DoseEffectRule(0.5.toBigDecimal(), "镇静", 1),
@@ -459,6 +505,9 @@ internal object DrugCatalogPart2 {
         moleculeTag = "哌啶类", halfLifeHours = 3.0, bioavailabilityPct = 30, route = Route.ORAL,
         tmaxHours = 2.0,
         substrates = listOf("CYP2D6"),
+        addictive = true, addictionRatePerHour = 0.04, toleranceGroup = "兴奋剂耐受",
+        description = "哌甲酯通过阻断多巴胺与去甲肾上腺素转运体、升高突触间隙儿茶酚胺浓度，用于注意缺陷多动障碍及发作性睡病；起效快、促觉醒与注意力改善明确，常见食欲抑制、失眠、心率与血压升高，长期使用可产生耐受与依赖（属管制类精神药品），与单胺氧化酶抑制剂联用可致高血压危象。",
+        attributes = listOf(DrugAttribute("兴奋", 4, 5), DrugAttribute("促认知", 2, 4), DrugAttribute("抗抑郁", 0, 2), DrugAttribute("依赖性", -1, 4)),
         rules = listOf(
             DoseEffectRule(5.toBigDecimal(), "专注", 2),
             DoseEffectRule(5.toBigDecimal(), "欣快", 1),
@@ -484,6 +533,9 @@ internal object DrugCatalogPart2 {
         moleculeTag = "托品类", halfLifeHours = 5.0, bioavailabilityPct = 80, route = Route.ORAL,
         tmaxHours = 2.0,
         substrates = listOf("CYP2D6", "CYP2C19"),
+        description = "托莫西汀为选择性去甲肾上腺素再摄取抑制剂，用于注意缺陷多动障碍，尤适合共病焦虑或物质滥用风险者；起效缓慢（数周起效），常见食欲下降、恶心、腹痛与血压轻度升高，CYP2D6弱代谢型血药浓度显著升高需减量，与单胺氧化酶抑制剂联用禁忌，与帕罗西汀等CYP2D6抑制剂联用须调整剂量。",
+        attributes = listOf(DrugAttribute("促认知", 2, 4), DrugAttribute("兴奋", 1, 2), DrugAttribute("抗抑郁", 0, 2), DrugAttribute("直立性低血压", -1, 2), DrugAttribute("依赖性", -1, 1)),
+        addictive = true, addictionRatePerHour = 0.006, toleranceGroup = "通用耐受",
         rules = listOf(
             DoseEffectRule(10.toBigDecimal(), "专注", 1),
             DoseEffectRule(25.toBigDecimal(), "专注", 2),
@@ -508,6 +560,9 @@ internal object DrugCatalogPart2 {
         tmaxHours = 2.0,
         substrates = listOf("CYP3A4"),
         inducers = listOf("CYP3A4"),
+        description = "莫达非尼为觉醒促进剂，弱抑制多巴胺再摄取并作用于下丘脑食欲素与组胺通路提高清醒度，用于发作性睡病、阻塞性睡眠呼吸暂停残余嗜睡及倒班工作睡眠障碍；成瘾与欣快倾向低于传统兴奋剂但仍有滥用风险，可致头痛、失眠与轻度血压升高，其为CYP3A4诱导剂，与口服避孕药联用降低避孕疗效。",
+        attributes = listOf(DrugAttribute("兴奋", 2, 5), DrugAttribute("促认知", 1, 3), DrugAttribute("依赖性", -1, 2)),
+        addictive = true, addictionRatePerHour = 0.03, toleranceGroup = "通用耐受",
         rules = listOf(
             DoseEffectRule(100.toBigDecimal(), "专注", 2),
             DoseEffectRule(100.toBigDecimal(), "欣快", 1),
@@ -535,6 +590,9 @@ internal object DrugCatalogPart2 {
         activeMetabolites = listOf(ActiveMetabolite(key = "morphine", fmPct = 10)),
         tmaxHours = 1.0,
         substrates = listOf("CYP2D6", "CYP3A4"),
+        addictive = true, addictionRatePerHour = 0.03, toleranceGroup = "阿片耐受",
+        description = "可待因为阿片μ受体弱激动剂，需经CYP2D6代谢为吗啡产生主要镇痛作用，本身直接抑制咳嗽中枢用于干咳；镇痛强度约为吗啡的十分之一，依赖与呼吸抑制均弱于强阿片类，超快代谢型患者可发生阿片中毒甚至呼吸骤停，与乙醇、苯二氮卓类联用加重呼吸抑制，妊娠晚期用药可致新生儿戒断综合征。",
+        attributes = listOf(DrugAttribute("镇痛", 2, 4), DrugAttribute("镇咳", 4, 5), DrugAttribute("镇静", 1, 3), DrugAttribute("依赖性", -1, 4), DrugAttribute("呼吸抑制", -1, 3)),
         rules = listOf(
             DoseEffectRule(15.toBigDecimal(), "镇痛", 1),
             DoseEffectRule(15.toBigDecimal(), "镇静", 1),
@@ -563,6 +621,9 @@ internal object DrugCatalogPart2 {
         tmaxHours = 2.0,
         substrates = listOf("CYP2D6", "CYP2B6", "CYP3A4"),
         activeMetabolites = listOf(ActiveMetabolite(key = "odesmethyltramadol", fmPct = 85)),
+        addictive = true, addictionRatePerHour = 0.02, toleranceGroup = "阿片耐受",
+        description = "曲马多为中枢性镇痛药，母体及代谢物O-去甲基曲马多激动μ受体，同时抑制5-HT与去甲肾上腺素再摄取，用于中重度急慢性疼痛；依赖与呼吸抑制风险低于强激动剂，与SSRI/SNRI联用可致5-HT综合征、与单胺氧化酶抑制剂联用禁忌，CYP2D6抑制剂可削弱其镇痛，并可降低癫痫阈值。",
+        attributes = listOf(DrugAttribute("镇痛", 3, 5), DrugAttribute("镇静", 0, 3), DrugAttribute("抗抑郁", 0, 2), DrugAttribute("依赖性", -1, 4), DrugAttribute("呼吸抑制", -1, 3)),
         rules = listOf(
             DoseEffectRule(50.toBigDecimal(), "镇痛", 1),
             DoseEffectRule(50.toBigDecimal(), "欣快", 1),
@@ -593,6 +654,9 @@ internal object DrugCatalogPart2 {
         moleculeTag = "苯基哌啶类", halfLifeHours = 17.0, bioavailabilityPct = 60, route = Route.TRANSDERMAL,
         tmaxHours = 8.0,
         substrates = listOf("CYP3A4"),
+        addictive = true, addictionRatePerHour = 0.04, toleranceGroup = "阿片耐受",
+        description = "芬太尼为强效合成阿片μ受体激动剂，镇痛效价约为吗啡的100倍，用于麻醉诱导、术中与术后镇痛及慢性癌痛透皮治疗；脂溶性高、起效极快，极易产生耐受、依赖与呼吸抑制，过量可致呼吸停止致死、纳洛酮可拮抗，与苯二氮卓类、乙醇联用显著增加致命性呼吸抑制风险，未用过阿片者禁用透皮贴剂。",
+        attributes = listOf(DrugAttribute("镇痛", 4, 5), DrugAttribute("镇静", 2, 5), DrugAttribute("催眠", 0, 4), DrugAttribute("欣快", 0, 4), DrugAttribute("依赖性", -1, 5), DrugAttribute("呼吸抑制", -1, 5)),
         rules = listOf(
             DoseEffectRule(12.5.toBigDecimal(), "镇痛", 1),
             DoseEffectRule(25.toBigDecimal(), "镇痛", 2),
@@ -622,6 +686,9 @@ internal object DrugCatalogPart2 {
         moleculeTag = "阿片类", halfLifeHours = 4.0, bioavailabilityPct = 60, route = Route.ORAL,
         tmaxHours = 2.0,
         substrates = listOf("CYP2D6", "CYP3A4"),
+        addictive = true, addictionRatePerHour = 0.03, toleranceGroup = "阿片耐受",
+        description = "羟考酮为半合成阿片μ/κ受体激动剂，用于中重度术后、创伤与癌性疼痛，常与对乙酰氨基酚组成复方；口服生物利用度高，镇痛与镇静作用强，依赖与呼吸抑制风险与吗啡相当，主要经CYP3A4/2D6代谢，与克拉霉素、氟康唑等抑制剂联用增强药效与毒性，与中枢抑制剂、乙醇联用需警惕呼吸抑制。",
+        attributes = listOf(DrugAttribute("镇痛", 3, 5), DrugAttribute("镇静", 2, 4), DrugAttribute("欣快", 0, 4), DrugAttribute("依赖性", -1, 5), DrugAttribute("呼吸抑制", -1, 4)),
         rules = listOf(
             DoseEffectRule(5.toBigDecimal(), "镇痛", 1),
             DoseEffectRule(5.toBigDecimal(), "欣快", 1),
@@ -652,6 +719,9 @@ internal object DrugCatalogPart2 {
         moleculeTag = "阿片类", halfLifeHours = 5.0, bioavailabilityPct = 70, route = Route.ORAL,
         tmaxHours = 1.5,
         substrates = listOf("CYP2D6", "CYP3A4"),
+        addictive = true, addictionRatePerHour = 0.03, toleranceGroup = "阿片耐受",
+        description = "氢可酮为半合成阿片μ受体激动剂，镇痛效价与吗啡相当，常与对乙酰氨基酚配伍用于中重度急性与慢性疼痛，并有抑制咳嗽中枢的作用；常见镇静、便秘、恶心与呼吸抑制，长期使用可产生耐受与依赖，主要经CYP2D6代谢，与CYP2D6抑制剂联用可改变镇痛效应，与中枢抑制剂及乙醇联用风险叠加。",
+        attributes = listOf(DrugAttribute("镇痛", 2, 4), DrugAttribute("镇咳", 1, 3), DrugAttribute("镇静", 1, 4), DrugAttribute("欣快", 0, 3), DrugAttribute("依赖性", -1, 4), DrugAttribute("呼吸抑制", -1, 4)),
         rules = listOf(
             DoseEffectRule(5.toBigDecimal(), "镇痛", 1),
             DoseEffectRule(5.toBigDecimal(), "镇静", 1),
@@ -680,6 +750,9 @@ internal object DrugCatalogPart2 {
         moleculeTag = "二苯庚酮类", halfLifeHours = 22.0, bioavailabilityPct = 80, route = Route.ORAL,
         tmaxHours = 3.0,
         substrates = listOf("CYP3A4", "CYP2B6", "CYP2D6"),
+        addictive = true, addictionRatePerHour = 0.01, toleranceGroup = "阿片耐受",
+        description = "美沙酮为长效合成阿片μ受体激动剂并拮抗NMDA受体，用于慢性疼痛及阿片类药物依赖的替代维持治疗；半衰期长且个体差异大，每日一次给药即可抑制戒断症状，但可延长QT间期并致尖端扭转型室性心动过速，过量致严重呼吸抑制，与CYP3A4抑制剂、苯二氮卓类联用致死风险显著升高。",
+        attributes = listOf(DrugAttribute("镇痛", 3, 5), DrugAttribute("镇静", 2, 4), DrugAttribute("欣快", 0, 3), DrugAttribute("依赖性", -1, 5), DrugAttribute("呼吸抑制", -1, 5)),
         rules = listOf(
             DoseEffectRule(5.toBigDecimal(), "镇痛", 1),
             DoseEffectRule(5.toBigDecimal(), "欣快", 1),
@@ -713,6 +786,9 @@ internal object DrugCatalogPart2 {
         moleculeTag = "蒂巴因衍生物", halfLifeHours = 37.0, bioavailabilityPct = 30, route = Route.SUBLINGUAL,
         tmaxHours = 2.0,
         substrates = listOf("CYP3A4"),
+        addictive = true, addictionRatePerHour = 0.015, toleranceGroup = "阿片耐受",
+        description = "丁丙诺啡为阿片μ受体部分激动剂兼κ受体拮抗剂，镇痛效价约为吗啡的30倍，呼吸抑制与依赖风险存在剂量天花板效应，用于中重度疼痛及阿片依赖的替代脱毒治疗；在已使用全激动剂者中可诱发戒断，舌下含服生物利用度受吞咽影响，与CYP3A4抑制剂联用可升高血药浓度。",
+        attributes = listOf(DrugAttribute("镇痛", 3, 5), DrugAttribute("镇静", 1, 3), DrugAttribute("欣快", 0, 2), DrugAttribute("依赖性", -1, 3), DrugAttribute("呼吸抑制", -1, 2)),
         rules = listOf(
             DoseEffectRule(0.2.toBigDecimal(), "镇痛", 1),
             DoseEffectRule(0.2.toBigDecimal(), "镇静", 1),
@@ -742,6 +818,9 @@ internal object DrugCatalogPart2 {
         moleculeTag = "苯基哌啶类", halfLifeHours = 4.0, bioavailabilityPct = 50, route = Route.ORAL,
         tmaxHours = 1.0,
         substrates = listOf("CYP3A4", "CYP2B6"),
+        addictive = true, addictionRatePerHour = 0.03, toleranceGroup = "阿片耐受",
+        description = "哌替啶为合成阿片μ受体激动剂，起效快、作用时间短，曾广泛用于分娩与急性疼痛，并具阿托品样抗胆碱作用；其代谢物去甲哌替啶可致震颤、肌阵挛与癫痫，长期使用神经系统毒性风险高，与单胺氧化酶抑制剂联用可致高血压危象与5-HT综合征，现已不推荐作为常规镇痛药。",
+        attributes = listOf(DrugAttribute("镇痛", 2, 4), DrugAttribute("镇静", 2, 4), DrugAttribute("抗胆碱", 1, 3), DrugAttribute("欣快", 0, 3), DrugAttribute("依赖性", -1, 5), DrugAttribute("呼吸抑制", -1, 4)),
         rules = listOf(
             DoseEffectRule(25.toBigDecimal(), "镇痛", 1),
             DoseEffectRule(25.toBigDecimal(), "欣快", 1),
@@ -774,6 +853,9 @@ internal object DrugCatalogPart2 {
         moleculeTag = "苯并吗啡烷类", halfLifeHours = 3.0, bioavailabilityPct = 40, route = Route.ORAL,
         tmaxHours = 1.0,
         substrates = listOf("CYP3A4"),
+        addictive = true, addictionRatePerHour = 0.02, toleranceGroup = "阿片耐受",
+        description = "喷他佐辛为阿片受体部分激动剂，激动κ受体而拮抗μ受体，镇痛效力约为吗啡的三分之一至二分之一，用于中重度疼痛；成瘾性与呼吸抑制均弱于纯μ受体激动剂，但在已使用吗啡者中可诱发戒断，大剂量可致幻觉、谵妄等拟精神病样反应，纳洛酮可部分拮抗其呼吸抑制。",
+        attributes = listOf(DrugAttribute("镇痛", 2, 4), DrugAttribute("镇静", 1, 3), DrugAttribute("致幻", 0, 3), DrugAttribute("依赖性", -1, 3), DrugAttribute("呼吸抑制", -1, 3)),
         rules = listOf(
             DoseEffectRule(15.toBigDecimal(), "镇痛", 1),
             DoseEffectRule(15.toBigDecimal(), "欣快", 1),
@@ -801,6 +883,9 @@ internal object DrugCatalogPart2 {
         moleculeTag = "环己醇类", halfLifeHours = 4.0, bioavailabilityPct = 32, route = Route.ORAL,
         tmaxHours = 1.5,
         substrates = listOf("CYP2D6", "CYP2C9"),
+        addictive = true, addictionRatePerHour = 0.02, toleranceGroup = "阿片耐受",
+        description = "他喷他多为新型中枢性镇痛药，兼具μ受体激动与去甲肾上腺素再摄取抑制双重机制，用于中重度急性疼痛与慢性骨关节疼痛；呼吸抑制与依赖风险低于吗啡，常见恶心、便秘与嗜睡，与SSRI/SNRI联用可致5-HT综合征、与单胺氧化酶抑制剂联用禁忌，肾功能不全者一般无需调整剂量。",
+        attributes = listOf(DrugAttribute("镇痛", 3, 5), DrugAttribute("镇静", 1, 3), DrugAttribute("欣快", 0, 3), DrugAttribute("依赖性", -1, 4), DrugAttribute("呼吸抑制", -1, 3)),
         rules = listOf(
             DoseEffectRule(50.toBigDecimal(), "镇静", 1),
             DoseEffectRule(50.toBigDecimal(), "镇痛", 1),
@@ -834,6 +919,8 @@ internal object DrugCatalogPart2 {
         tmaxHours = 2.5,
         substrates = listOf("CYP2D6"),
         description = "治疗剂量为镇咳药；超治疗剂量（十余片）产生解离与欣快——俗称「穷人的氯胺酮」，与 MAOI 联用可致死。",
+        attributes = listOf(DrugAttribute("镇咳", 4, 5), DrugAttribute("致幻", 0, 4), DrugAttribute("镇静", 0, 3), DrugAttribute("兴奋", 0, 3), DrugAttribute("依赖性", -1, 2)),
+        addictive = true, addictionRatePerHour = 0.006, toleranceGroup = "通用耐受",
         rules = listOf(
             DoseEffectRule(10.toBigDecimal(), "镇吐", 1),
             DoseEffectRule(10.toBigDecimal(), "镇静", 1),
@@ -863,6 +950,8 @@ internal object DrugCatalogPart2 {
         effectTags = listOf("对乙酰氨基酚类"),
         moleculeTag = "乙酰苯胺类", halfLifeHours = 2.5, bioavailabilityPct = 70, route = Route.ORAL,
         tmaxHours = 1.0,
+        description = "对乙酰氨基酚为中枢性解热镇痛药，通过抑制下丘脑环氧合酶与花生四烯酸代谢降低体温并提高痛阈，外周抗炎作用弱，用于发热、轻中度头痛与肌肉骨骼疼痛，是妊娠期首选解热镇痛药；治疗剂量安全，过量（成人单次超过10 g或每日超过4 g）可致剂量依赖性肝小叶中心坏死，嗜酒、肝病及与异烟肼联用时肝毒性风险显著升高。",
+        attributes = listOf(DrugAttribute("镇痛", 1, 3), DrugAttribute("解热", 3, 5), DrugAttribute("抗炎", 0, 1)),
         rules = listOf(
             DoseEffectRule(250.toBigDecimal(), "镇痛", 1),
             DoseEffectRule(250.toBigDecimal(), "释然", 1),
@@ -891,6 +980,8 @@ internal object DrugCatalogPart2 {
         moleculeTag = "芳基丙酸类", halfLifeHours = 2.0, bioavailabilityPct = 49, route = Route.ORAL,
         tmaxHours = 1.5,
         substrates = listOf("CYP2C9"),
+        description = "布洛芬为非选择性COX-1/COX-2抑制剂，解热、镇痛与抗炎作用均衡，用于发热、头痛、痛经、骨关节炎与类风湿关节炎；胃肠道刺激、消化性溃疡与出血风险呈剂量依赖性，与抗凝药、抗血小板药、糖皮质激素及SSRI联用加重出血风险，肾功能不全、心力衰竭及妊娠晚期慎用。",
+        attributes = listOf(DrugAttribute("镇痛", 2, 4), DrugAttribute("解热", 3, 5), DrugAttribute("抗炎", 3, 5), DrugAttribute("消化道出血风险", -1, 3)),
         rules = listOf(
             DoseEffectRule(100.toBigDecimal(), "镇痛", 1),
             DoseEffectRule(100.toBigDecimal(), "释然", 1),
@@ -914,6 +1005,8 @@ internal object DrugCatalogPart2 {
         moleculeTag = "芳基丙酸类", halfLifeHours = 14.0, bioavailabilityPct = 95, route = Route.ORAL,
         tmaxHours = 2.0,
         substrates = listOf("CYP2C9", "CYP1A2"),
+        description = "萘普生为非选择性环氧合酶抑制剂，解热、镇痛与抗炎作用与布洛芬相当而半衰期较长（约13小时），每日两次给药用于类风湿关节炎、痛风、痛经与发热；其心血管血栓事件风险在非甾体抗炎药中相对较低，但仍可致消化道溃疡、出血与肾功能损害，与华法林、普利类降压药及甲氨蝶呤联用需谨慎。",
+        attributes = listOf(DrugAttribute("镇痛", 2, 4), DrugAttribute("解热", 2, 4), DrugAttribute("抗炎", 3, 5), DrugAttribute("消化道出血风险", -1, 3)),
         rules = listOf(
             DoseEffectRule(125.toBigDecimal(), "镇痛", 1),
             DoseEffectRule(250.toBigDecimal(), "镇痛", 2),
@@ -936,6 +1029,8 @@ internal object DrugCatalogPart2 {
         moleculeTag = "水杨酸类", halfLifeHours = 6.0, bioavailabilityPct = 68, route = Route.ORAL,
         tmaxHours = 1.0,
         substrates = listOf("CYP2C9", "UGT1A6"),
+        description = "阿司匹林不可逆乙酰化抑制环氧合酶，小剂量抑制血小板血栓素A2生成、用于心脑血管事件的一级与二级预防，大剂量用于解热、镇痛、抗炎与风湿性疾病；消化道溃疡与出血风险呈剂量依赖性，儿童病毒感染期用药可致瑞氏综合征，与华法林、其他非甾体抗炎药及乙醇联用显著增加出血。",
+        attributes = listOf(DrugAttribute("镇痛", 1, 3), DrugAttribute("解热", 2, 5), DrugAttribute("抗炎", 1, 4), DrugAttribute("抗血栓", 3, 5), DrugAttribute("消化道出血风险", -1, 4)),
         rules = listOf(
             DoseEffectRule(50.toBigDecimal(), "镇痛", 1),
             DoseEffectRule(100.toBigDecimal(), "释然", 1),
@@ -963,6 +1058,8 @@ internal object DrugCatalogPart2 {
         moleculeTag = "芳基乙酸类", halfLifeHours = 2.0, bioavailabilityPct = 54, route = Route.ORAL,
         tmaxHours = 1.0,
         substrates = listOf("CYP2C9", "CYP3A4"),
+        description = "双氯芬酸为芳基乙酸类非选择性环氧合酶抑制剂，抗炎镇痛作用强、起效剂量小，用于骨关节炎、类风湿关节炎与急性疼痛；其心肌梗死与心血管事件风险随剂量与疗程升高，胃肠道出血与肝酶升高亦较常见，与喹诺酮类抗菌药联用可诱发癫痫，妊娠晚期禁用。",
+        attributes = listOf(DrugAttribute("镇痛", 2, 4), DrugAttribute("抗炎", 4, 5), DrugAttribute("解热", 1, 3), DrugAttribute("心血管风险", -1, 3), DrugAttribute("消化道出血风险", -1, 3)),
         rules = listOf(
             DoseEffectRule(12.5.toBigDecimal(), "镇痛", 1),
             DoseEffectRule(25.toBigDecimal(), "镇痛", 2),
@@ -986,6 +1083,8 @@ internal object DrugCatalogPart2 {
         tmaxHours = 2.0,
         substrates = listOf("CYP2C9", "CYP3A4"),
         inhibitors = listOf("CYP2D6"),
+        description = "塞来昔布为选择性COX-2抑制剂、含磺胺基团，用于骨关节炎、类风湿关节炎、强直性脊柱炎与急性疼痛，亦用于家族性腺瘤性息肉病；消化道溃疡与出血风险显著低于非选择性非甾体抗炎药，但仍可致血压升高、水肿并增加心血管事件风险，磺胺类过敏者禁用，与氟康唑联用需减量。",
+        attributes = listOf(DrugAttribute("镇痛", 2, 4), DrugAttribute("抗炎", 3, 5), DrugAttribute("解热", 0, 2), DrugAttribute("消化道出血风险", -1, 1), DrugAttribute("心血管风险", -1, 3)),
         rules = listOf(
             DoseEffectRule(100.toBigDecimal(), "镇痛", 1),
             DoseEffectRule(100.toBigDecimal(), "释然", 1),
@@ -1006,6 +1105,9 @@ internal object DrugCatalogPart2 {
         effectTags = listOf("血清素再摄取抑制剂", "血清素能镇痛药"),
         moleculeTag = "5-甲基-1-苯基-1,3,4,6-四氢-2,5-苯并氧氮䓬类", halfLifeHours = 4.0, bioavailabilityPct = 36, route = Route.ORAL,
         tmaxHours = 2.0,
+        description = "奈福泮为非阿片类中枢性镇痛药，通过抑制5-HT、去甲肾上腺素与多巴胺再摄取并阻断NMDA受体发挥镇痛作用，兼有镇咳与轻度抗胆碱效应，用于术后与慢性肌肉骨骼疼痛；无呼吸抑制、无明显耐受与依赖倾向，过量可致惊厥与幻觉，与三环类抗抑郁药、单胺氧化酶抑制剂及拟交感胺联用应谨慎。",
+        attributes = listOf(DrugAttribute("镇痛", 2, 4), DrugAttribute("镇咳", 0, 3), DrugAttribute("镇静", 0, 3), DrugAttribute("抗抑郁", 0, 2), DrugAttribute("依赖性", -1, 1)),
+        addictive = true, addictionRatePerHour = 0.004, toleranceGroup = "通用耐受",
         rules = listOf(
             DoseEffectRule(10.toBigDecimal(), "镇痛", 1),
             DoseEffectRule(10.toBigDecimal(), "欣快", 1),
@@ -1037,6 +1139,8 @@ internal object DrugCatalogPart2 {
         moleculeTag = "哌啶类", halfLifeHours = 70.0, bioavailabilityPct = 90, route = Route.ORAL,
         tmaxHours = 4.0,
         substrates = listOf("CYP2D6", "CYP3A4"),
+        description = "多奈哌齐为可逆性中枢乙酰胆碱酯酶抑制剂，升高大脑皮质乙酰胆碱水平，用于轻中度阿尔茨海默病及血管性痴呆的认知与功能改善；半衰期长、可平稳滴定，常见恶心、腹泻、肌肉痉挛与失眠，可致心动过缓与房室传导阻滞并加重消化性溃疡，与抗胆碱药、琥珀胆碱及β受体阻滞剂联用需注意。",
+        attributes = listOf(DrugAttribute("促认知", 2, 4), DrugAttribute("精神行为症状改善", 1, 3), DrugAttribute("消化道反应", -1, 2)),
         rules = listOf(
             DoseEffectRule(5.toBigDecimal(), "善记", 1),
             DoseEffectRule(5.toBigDecimal(), "专注", 1),
@@ -1062,6 +1166,8 @@ internal object DrugCatalogPart2 {
         moleculeTag = "石蒜科生物碱类", halfLifeHours = 7.0, bioavailabilityPct = 90, route = Route.ORAL,
         tmaxHours = 1.0,
         substrates = listOf("CYP2D6", "CYP3A4"),
+        description = "加兰他敏为可逆性胆碱酯酶抑制剂兼烟碱型受体变构调节剂，增强中枢胆碱能传递，用于轻中度阿尔茨海默病；可减缓认知衰退并部分改善精神行为症状，常见恶心、呕吐、厌食与体重下降，与食物同服可减轻胃肠道反应，心动过缓、哮喘及消化性溃疡者慎用，与CYP2D6/3A4抑制剂联用需减量。",
+        attributes = listOf(DrugAttribute("促认知", 2, 4), DrugAttribute("精神行为症状改善", 1, 3), DrugAttribute("消化道反应", -1, 2)),
         rules = listOf(
             DoseEffectRule(4.toBigDecimal(), "善记", 1),
             DoseEffectRule(4.toBigDecimal(), "专注", 1),
@@ -1086,6 +1192,8 @@ internal object DrugCatalogPart2 {
         effectTags = listOf("胆碱酯酶抑制剂"),
         moleculeTag = "氨基甲酸酯类", halfLifeHours = 1.5, bioavailabilityPct = 40, route = Route.ORAL,
         tmaxHours = 1.0,
+        description = "卡巴拉汀为脑选择性假性不可逆胆碱酯酶抑制剂，同时抑制乙酰与丁酰胆碱酯酶，用于轻中度阿尔茨海默病与帕金森病痴呆；对多巴胺-胆碱失衡的帕金森患者尤为适用，透皮贴剂的胃肠道反应显著低于口服，常见恶心、呕吐、厌食与体重下降，体重显著下降者应停药，与抗胆碱药联用相互拮抗。",
+        attributes = listOf(DrugAttribute("促认知", 2, 4), DrugAttribute("精神行为症状改善", 1, 4), DrugAttribute("消化道反应", -1, 3), DrugAttribute("镇静", 0, 2)),
         rules = listOf(
             DoseEffectRule(1.5.toBigDecimal(), "善记", 1),
             DoseEffectRule(1.5.toBigDecimal(), "恶心", 1),
@@ -1111,6 +1219,8 @@ internal object DrugCatalogPart2 {
         effectTags = listOf("胆碱酯酶抑制剂"),
         moleculeTag = "石杉科生物碱类", halfLifeHours = 12.0, bioavailabilityPct = 50, route = Route.ORAL,
         tmaxHours = 2.0,
+        description = "石杉碱甲为蛇足石杉来源的可逆性胆碱酯酶抑制剂，改善中枢胆碱能传递，用于阿尔茨海默病、血管性痴呆与良性记忆功能减退；作用时间较长、外周不良反应轻，大剂量可致头晕、恶心与多汗，癫痫、哮喘、心动过缓及肠梗阻患者慎用，与其他胆碱酯酶抑制剂联用不增效而毒性叠加。",
+        attributes = listOf(DrugAttribute("促认知", 1, 3), DrugAttribute("镇静", 0, 1), DrugAttribute("消化道反应", -1, 1)),
         rules = listOf(
             DoseEffectRule(50.toBigDecimal(), "善记", 1),
             DoseEffectRule(100.toBigDecimal(), "善记", 1),
@@ -1135,6 +1245,8 @@ internal object DrugCatalogPart2 {
         moleculeTag = "吲哚类激素", halfLifeHours = 0.7, bioavailabilityPct = 30, route = Route.ORAL,
         tmaxHours = 0.7,
         substrates = listOf("CYP1A2"),
+        description = "褪黑素为松果体分泌的吲哚类激素，激动MT1/MT2受体调节昼夜节律并降低核心体温，用于睡眠时相延迟综合征、倒班与跨时区旅行所致失眠及老年人褪黑素分泌不足；起效快、依赖与停药反跳风险低，大剂量可致晨起嗜睡、头痛与多梦，与华法林联用影响抗凝自稳，自身免疫性疾病者慎用。",
+        attributes = listOf(DrugAttribute("催眠", 1, 4), DrugAttribute("镇静", 0, 2), DrugAttribute("抗焦虑", 0, 2), DrugAttribute("节律调节", 2, 4)),
         rules = listOf(
             DoseEffectRule(0.5.toBigDecimal(), "镇静", 1),
             DoseEffectRule(0.5.toBigDecimal(), "嗜睡", 1),
@@ -1158,6 +1270,8 @@ internal object DrugCatalogPart2 {
         effectTags = listOf("矿物质补充剂"),
         moleculeTag = "氨基酸螯合镁", halfLifeHours = 8.0, bioavailabilityPct = 40, route = Route.ORAL,
         tmaxHours = 2.0,
+        description = "甘氨酸镁为镁与甘氨酸的螯合物，通过补充细胞内镁、阻断NMDA受体并调节GABA能传导降低神经肌肉兴奋性，用于镁缺乏相关的失眠、焦虑、肌肉痉挛与偏头痛预防；螯合形式吸收率高且胃肠道耐受性好，大剂量可致腹泻与嗜睡，肾功能不全者可致高镁血症，与四环素类、喹诺酮类口服吸收相互干扰。",
+        attributes = listOf(DrugAttribute("镇静", 0, 3), DrugAttribute("催眠", 0, 2), DrugAttribute("抗焦虑", 0, 2), DrugAttribute("肌肉松弛", 0, 3)),
         rules = listOf(
             DoseEffectRule(100.toBigDecimal(), "镇静", 1),
             DoseEffectRule(200.toBigDecimal(), "镇静", 1),
@@ -1179,6 +1293,8 @@ internal object DrugCatalogPart2 {
         effectTags = listOf("矿物质补充剂"),
         moleculeTag = "苏糖酸螯合镁", halfLifeHours = 8.0, bioavailabilityPct = 40, route = Route.ORAL,
         tmaxHours = 2.0,
+        description = "苏糖酸镁为可高效透过血脑屏障的镁盐形式，升高脑脊液与脑组织内镁离子浓度，临床前与初步人体研究提示可改善老年人工作记忆与执行功能，亦用于失眠与焦虑的辅助调节；安全性与耐受性良好，大剂量可致头晕、嗜睡与消化道不适，肾功能不全者需谨慎以防高镁血症。",
+        attributes = listOf(DrugAttribute("促认知", 1, 3), DrugAttribute("镇静", 0, 2), DrugAttribute("催眠", 0, 2), DrugAttribute("抗焦虑", 0, 1)),
         rules = listOf(
             DoseEffectRule(500.toBigDecimal(), "善记", 1),
             DoseEffectRule(500.toBigDecimal(), "镇静", 1),
@@ -1205,6 +1321,8 @@ internal object DrugCatalogPart2 {
         moleculeTag = "神经固醇类", halfLifeHours = 2.0, bioavailabilityPct = 50, route = Route.ORAL,
         tmaxHours = 1.5,
         substrates = listOf("CYP3A4"),
+        description = "孕烯醇酮为肾上腺与中枢神经元合成的神经类固醇前体，作为GABA-A受体正变构调节剂并拮抗NMDA受体，参与觉醒、注意与情绪的调节，试用于认知功能减退、情绪与睡眠障碍的辅助补充；外源补充的临床获益证据仍有限，剂量相关的不良反应为烦躁、失眠与心悸，与镇静催眠药联用增强镇静，激素敏感性肿瘤者慎用。",
+        attributes = listOf(DrugAttribute("促认知", 0, 3), DrugAttribute("抗焦虑", 0, 2), DrugAttribute("镇静", 0, 2), DrugAttribute("抗抑郁", 0, 2)),
         rules = listOf(
             DoseEffectRule(10.toBigDecimal(), "欣快", 1),
             DoseEffectRule(10.toBigDecimal(), "善记", 1),
@@ -1231,6 +1349,8 @@ internal object DrugCatalogPart2 {
         effectTags = listOf("血清素前体"),
         moleculeTag = "氨基酸类", halfLifeHours = 2.0, bioavailabilityPct = 55, route = Route.ORAL,
         tmaxHours = 1.5,
+        description = "5-羟基色氨酸为色氨酸羟化生成、可直接透过血脑屏障的5-羟色胺前体，脱羧生成血清素，作为补充剂用于抑郁、焦虑、失眠、纤维肌痛样疼痛与贪食的辅助改善；其单胺合成不受反馈调节，与SSRI、SNRI、三环类、曲马多及单胺氧化酶抑制剂联用可显著增加5-HT综合征风险，过量可致严重呕吐与精神异常。",
+        attributes = listOf(DrugAttribute("抗抑郁", 0, 3), DrugAttribute("抗焦虑", 0, 2), DrugAttribute("催眠", 0, 3), DrugAttribute("镇静", 0, 2), DrugAttribute("镇痛", 0, 2)),
         rules = listOf(
             DoseEffectRule(25.toBigDecimal(), "欣快", 1),
             DoseEffectRule(25.toBigDecimal(), "嗜睡", 1),

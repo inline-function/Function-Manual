@@ -4,6 +4,7 @@ import android.content.Context
 import com.fangshen.manual.model.AlertRule
 import com.fangshen.manual.model.AppSettings
 import com.fangshen.manual.model.CustomEffect
+import com.fangshen.manual.model.CustomDoc
 import com.fangshen.manual.model.CustomInteraction
 import com.fangshen.manual.model.CustomPack
 import com.fangshen.manual.model.parseCustomEffect
@@ -46,6 +47,8 @@ data class JsonData(
     val customEffects: List<CustomEffect> = emptyList(),
     val customPacks: List<CustomPack> = emptyList(),
     val customInteractions: List<CustomInteraction> = emptyList(),
+    // —— v5 用户自建文档 ——
+    val customDocs: List<CustomDoc> = emptyList(),
     val settings: AppSettings = AppSettings(),
 )
 
@@ -104,6 +107,7 @@ class JsonDataStore(context: Context) {
         root.put("customEffects", JSONArray(data.customEffects.map { it.toJson() }))
         root.put("customPacks", JSONArray(data.customPacks.map { it.toJson() }))
         root.put("customInteractions", JSONArray(data.customInteractions.map { it.toJson() }))
+    root.put("customDocs", JSONArray(data.customDocs.map { customDocToJson(it) }))
         root.put("settings", data.settings.toJson())
         return root.toString(2)
     }
@@ -155,6 +159,9 @@ class JsonDataStore(context: Context) {
         customInteractions = root.optJSONArray("customInteractions")?.let { arr ->
             List(arr.length()) { i -> parseCustomInteraction(arr.getJSONObject(i)) }
         } ?: emptyList(),
+        customDocs = root.optJSONArray("customDocs")?.let { arr ->
+            List(arr.length()) { i -> parseCustomDoc(arr.getJSONObject(i)) }
+        } ?: emptyList(),
         settings = root.optJSONObject("settings")?.let { parseSettings(it) } ?: AppSettings(),
     )
 
@@ -169,6 +176,7 @@ class JsonDataStore(context: Context) {
         root.put("customEffects", JSONArray(data.customEffects.map { it.toJson() }))
         root.put("customPacks", JSONArray(data.customPacks.map { it.toJson() }))
         root.put("customInteractions", JSONArray(data.customInteractions.map { it.toJson() }))
+        root.put("customDocs", JSONArray(data.customDocs.map { customDocToJson(it) }))
         root.put("settings", data.settings.toJson())
         return root.toString(2)
     }
@@ -183,11 +191,34 @@ private fun AlertRule.toJson(): JSONObject = JSONObject().apply {
     put("name", name)
     put("enabled", enabled)
     put("drug", drug)
-    withDrug?.let { put("withDrug", it) } ?: put("withDrug", JSONObject.NULL)
-    withProfile?.let { put("withProfile", it) } ?: put("withProfile", JSONObject.NULL)
+    put("withDrug", withDrug)
+    put("withProfile", withProfile)
     put("effect", effect)
     put("weight", weight)
+    conditionSex?.let { put("conditionSex", it) }
+    conditionWeightMin?.let { put("conditionWeightMin", it) }
+    conditionWeightMax?.let { put("conditionWeightMax", it) }
 }
+
+private fun customDocToJson(doc: CustomDoc): JSONObject = JSONObject().apply {
+    put("id", doc.id)
+    put("category", doc.category)
+    put("title", doc.title)
+    put("subtitle", doc.subtitle)
+    put("content", doc.content)
+    put("order", doc.order)
+    put("createdAt", doc.createdAt)
+}
+
+private fun parseCustomDoc(o: JSONObject): CustomDoc = CustomDoc(
+    id = o.optString("id"),
+    category = o.optString("category"),
+    title = o.optString("title"),
+    subtitle = o.optString("subtitle"),
+    content = o.optString("content"),
+    order = o.optInt("order", 0),
+    createdAt = o.optLong("createdAt", System.currentTimeMillis()),
+)
 
 private fun parseAlert(o: JSONObject): AlertRule = AlertRule(
     id = o.optLong("id"),
@@ -198,6 +229,9 @@ private fun parseAlert(o: JSONObject): AlertRule = AlertRule(
     withProfile = o.optString("withProfile").takeIf { !it.isNullOrEmpty() && o.opt("withProfile") != JSONObject.NULL },
     effect = o.optString("effect"),
     weight = o.optInt("weight"),
+    conditionSex = o.optString("conditionSex").ifEmpty { null },
+    conditionWeightMin = o.optInt("conditionWeightMin", -1).takeIf { it >= 0 },
+    conditionWeightMax = o.optInt("conditionWeightMax", -1).takeIf { it >= 0 },
 )
 
 private fun EntryEntity.toJson(): JSONObject = JSONObject().apply {
@@ -270,6 +304,8 @@ private fun DrugJson.toJson(): JSONObject = JSONObject().apply {
     put("addictive", e.addictive)
     put("addictionRatePerHour", e.addictionRatePerHour)
     e.toleranceGroup?.let { put("toleranceGroup", it) }
+    e.activeMetabolites?.let { put("activeMetabolites", it) }
+    e.attributes?.let { put("attributes", it) }
     put("rules", JSONArray(rules.map { r ->
         JSONObject().apply {
             put("id", r.id)
@@ -313,6 +349,8 @@ private fun parseDrug(o: JSONObject): DrugJson = DrugJson(
         addictive = o.optBoolean("addictive", false),
         addictionRatePerHour = o.optDouble("addictionRatePerHour", 0.0),
         toleranceGroup = o.optString("toleranceGroup", "").ifEmpty { null },
+        activeMetabolites = o.optString("activeMetabolites", "").ifEmpty { null },
+        attributes = o.optString("attributes", "").ifEmpty { null },
     ),
     rules = o.optJSONArray("rules")?.let { arr ->
         List(arr.length()) { i ->

@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.ArrowDropUp
@@ -20,6 +22,9 @@ import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import com.fangshen.manual.model.attributeLevelLabel
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -250,6 +255,162 @@ fun DrugEditScreen(
                     )
                 }
             }
+
+            SectionTitle("活性代谢物")
+
+            form.metabolites.forEachIndexed { index, row ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        var expanded by remember { mutableStateOf(false) }
+                        val candName = form.candidates.firstOrNull { it.first == row.key }?.second ?: row.key
+                        Box {
+                            OutlinedTextField(
+                                value = candName,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("引用药物") },
+                                singleLine = true,
+                                trailingIcon = { Icon(Icons.Rounded.ArrowDropDown, contentDescription = null) },
+                                modifier = Modifier.fillMaxWidth().clickable { expanded = true },
+                            )
+                            DropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false },
+                            ) {
+                                form.candidates.forEach { (key, name) ->
+                                    DropdownMenuItem(
+                                        text = { Text(name) },
+                                        onClick = {
+                                            viewModel.update { it.copy(metabolites = it.metabolites.toMutableList().also { list -> list[index] = list[index].copy(key = key) }) }
+                                            expanded = false
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            OutlinedTextField(
+                                value = row.fmPct,
+                                onValueChange = { v -> viewModel.update { it.copy(metabolites = it.metabolites.toMutableList().also { list -> list[index] = list[index].copy(fmPct = v) }) } },
+                                label = { Text("转化分数 fm%") },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                modifier = Modifier.weight(1f),
+                            )
+                            OutlinedTextField(
+                                value = row.potency,
+                                onValueChange = { v -> viewModel.update { it.copy(metabolites = it.metabolites.toMutableList().also { list -> list[index] = list[index].copy(potency = v) }) } },
+                                label = { Text("相对效价") },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                modifier = Modifier.weight(1f),
+                            )
+                            OutlinedTextField(
+                                value = row.delayHours,
+                                onValueChange = { v -> viewModel.update { it.copy(metabolites = it.metabolites.toMutableList().also { list -> list[index] = list[index].copy(delayHours = v) }) } },
+                                label = { Text("形成延迟(h，可空)") },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                        TextButton(
+                            onClick = { viewModel.update { it.copy(metabolites = it.metabolites.toMutableList().also { list -> list.removeAt(index) }) } },
+                        ) { Text("移除该代谢物") }
+                    }
+                }
+            }
+            TextButton(
+                onClick = { viewModel.update { it.copy(metabolites = it.metabolites + MetaboliteRow()) } },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("+ 添加活性代谢物") }
+
+            SectionTitle("展示属性")
+
+            form.attributes.forEachIndexed { index, row ->
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        OutlinedTextField(
+                            value = row.name,
+                            onValueChange = { v -> viewModel.update { it.copy(attributes = it.attributes.toMutableList().also { list -> list[index] = list[index].copy(name = v) }) } },
+                            label = { Text("属性名（如 抗抑郁）") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            var fromExpanded by remember { mutableStateOf(false) }
+                            var toExpanded by remember { mutableStateOf(false) }
+                            Box(modifier = Modifier.weight(1f)) {
+                                OutlinedTextField(
+                                    value = attributeLevelLabel(row.from),
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    label = { Text("下限") },
+                                    singleLine = true,
+                                    trailingIcon = { Icon(Icons.Rounded.ArrowDropDown, contentDescription = null) },
+                                    modifier = Modifier.fillMaxWidth().clickable { fromExpanded = true },
+                                )
+                                DropdownMenu(expanded = fromExpanded, onDismissRequest = { fromExpanded = false }) {
+                                    (-1..5).forEach { lv ->
+                                        DropdownMenuItem(
+                                            text = { Text(attributeLevelLabel(lv)) },
+                                            onClick = {
+                                                viewModel.update { it.copy(attributes = it.attributes.toMutableList().also { list -> list[index] = list[index].copy(from = lv) }) }
+                                                fromExpanded = false
+                                            },
+                                        )
+                                    }
+                                }
+                            }
+                            Text("至")
+                            Box(modifier = Modifier.weight(1f)) {
+                                OutlinedTextField(
+                                    value = attributeLevelLabel(row.to),
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    label = { Text("上限") },
+                                    singleLine = true,
+                                    trailingIcon = { Icon(Icons.Rounded.ArrowDropDown, contentDescription = null) },
+                                    modifier = Modifier.fillMaxWidth().clickable { toExpanded = true },
+                                )
+                                DropdownMenu(expanded = toExpanded, onDismissRequest = { toExpanded = false }) {
+                                    (-1..5).forEach { lv ->
+                                        DropdownMenuItem(
+                                            text = { Text(attributeLevelLabel(lv)) },
+                                            onClick = {
+                                                viewModel.update { it.copy(attributes = it.attributes.toMutableList().also { list -> list[index] = list[index].copy(to = lv) }) }
+                                                toExpanded = false
+                                            },
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        TextButton(
+                            onClick = { viewModel.update { it.copy(attributes = it.attributes.toMutableList().also { list -> list.removeAt(index) }) } },
+                        ) { Text("移除该属性") }
+                    }
+                }
+            }
+            TextButton(
+                onClick = { viewModel.update { it.copy(attributes = it.attributes + AttributeRow()) } },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("+ 添加展示属性") }
 
             SectionTitle("酶")
             ChipListEditor(

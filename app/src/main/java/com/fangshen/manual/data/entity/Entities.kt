@@ -34,6 +34,10 @@ data class CustomDrugEntity(
     val addictive: Boolean = false,
     val addictionRatePerHour: Double = 0.0,
     val toleranceGroup: String? = null,
+    /** 活性代谢物：分号分组，每组 形如 "key:fmPct:potency:delayHours"，key 可为内置键或 custom:id */
+    val activeMetabolites: String? = null,
+    /** 展示属性：分号分组 "name:from:to" */
+    val attributes: String? = null,
 )
 
 /** 自定义药物的效应线：服用剂量超过阈值时施加权重 */

@@ -13,6 +13,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.fillMaxHeight
+import com.fangshen.manual.model.DrugAttribute
+import com.fangshen.manual.model.attributeLevelLabel
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -62,6 +65,36 @@ fun DrugDetailContent(drug: DrugInfo, modifier: Modifier = Modifier) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        if (drug.description != null) {
+            SectionCard("简介") {
+                Text(
+                    text = drug.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
+        if (drug.attributes.isNotEmpty()) {
+            SectionCard("属性") {
+                drug.attributes.forEach { attr -> AttributeRangeBar(attr) }
+                Text(
+                    text = "属性区间为该药在不同剂量/适应症下的示意范围，仅供参考。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        if (drug.addictive) {
+            SectionCard("成瘾性") {
+                InfoRow("生理成瘾性", "有")
+                InfoRow("游标移动速度", "${drug.addictionRatePerHour} /小时")
+                drug.toleranceGroup?.let { InfoRow("交叉耐药组", it) }
+                Text(
+                    text = "成瘾游标线随给药持续向当前浓度移动；停药后低于临界值时将提示戒断风险。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
         SectionCard("基本信息") {
             InfoRow("监督管理分类", drug.managementClass.label)
             InfoRow("给药途径", drug.route.label)
@@ -192,6 +225,58 @@ fun TagRow(title: String, tags: List<String>, color: Color) {
             modifier = Modifier.padding(top = 4.dp),
         ) {
             tags.forEach { tag -> Tag(text = tag, color = color) }
+        }
+    }
+}
+
+/**
+ * 属性范围条：7 段（负/无/正极轻..正极重），命中区间着色——负段红、无及正段蓝。
+ */
+@Composable
+fun AttributeRangeBar(attr: DrugAttribute, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(
+                text = attr.name,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+            )
+            Text(
+                text = attributeLevelLabel(attr.from) + " — " + attributeLevelLabel(attr.to),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp)
+                .height(10.dp),
+        ) {
+            (-1..5).forEach { level ->
+                val hit = level in attr.from..attr.to
+                val color = when {
+                    !hit -> MaterialTheme.colorScheme.surfaceVariant
+                    level < 0 -> Color(0xFFD32F2F)
+                    else -> Color(0xFF1E5FA8)
+                }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(color),
+                )
+            }
         }
     }
 }

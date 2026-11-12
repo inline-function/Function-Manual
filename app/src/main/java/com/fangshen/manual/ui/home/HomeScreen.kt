@@ -82,7 +82,7 @@ fun HomeScreen(
     val settings = jsonData.settings
     val filteredEffects = remember(state.activeEffects, settings) {
         state.activeEffects.filter { group ->
-            effectCategory(group.name, group.displayChronic)?.enabledIn(settings.effectDisplay) != false
+            effectCategory(group.name, group.displayChronic)?.enabledIn(settings.effectDisplay, group.weight) != false
         }
     }
     // 每分钟刷新一次"当前时刻"，驱动图像重绘（函数图像随实际时间推进）

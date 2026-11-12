@@ -26,7 +26,9 @@ val DISORDER_ITEMS: List<Pair<String, List<String>>> = listOf(
     "神经发育障碍" to listOf(
         "智力障碍",
         "交流障碍",
-        "孤独症谱系障碍",
+        "孤独症（典型）",
+        "高功能孤独症",
+        "阿斯伯格综合征",
         "注意缺陷/多动障碍",
         "特定学习障碍",
         "发育性协调障碍",
@@ -34,19 +36,21 @@ val DISORDER_ITEMS: List<Pair<String, List<String>>> = listOf(
         "抽动秽语综合征",
     ),
     "精神分裂障碍" to listOf(
+        // 跨诊断症状维度：伴精神病性抑郁等组合靠勾选实现
+        "精神病性症状",
         "精神分裂症",
         "分裂样障碍",
         "分裂情感性障碍",
         "妄想性障碍",
         "短暂精神病性障碍",
-        "精神病性障碍（未特定）",
+        "未特定的精神病性障碍",
     ),
     "情感障碍" to listOf(
         "双相I型障碍",
         "双相II型障碍",
         "环性心境障碍",
         "破坏性心境失调障碍",
-        "重度抑郁障碍",
+        "抑郁障碍",
         "持续性抑郁障碍（心境恶劣）",
         "经前期烦躁障碍",
     ),
@@ -64,24 +68,26 @@ val DISORDER_ITEMS: List<Pair<String, List<String>>> = listOf(
         "躯体变形障碍",
         "囤积障碍",
         "拔毛癖",
-        "抓痕（皮肤搔抓）障碍",
+        "皮肤搔抓障碍",
     ),
     "创伤与应激障碍" to listOf(
-        "反应性依恋障碍",
-        "去抑制性社会参与障碍",
         "创伤后应激障碍",
         "急性应激障碍",
         "适应障碍",
+        "反应性依恋障碍",
+        "去抑制性社会参与障碍",
     ),
     "解离障碍" to listOf(
-        "分离性身份障碍",
-        "分离性遗忘症",
-        "人格解体/现实解体障碍",
+        "解离性身份障碍",
+        "解离性失忆障碍",
+        "人格解体障碍",
+        "现实解体障碍",
+        "其他特定解离障碍（OSDD）",
     ),
-    "躯体障碍" to listOf(
+    "躯体症状与相关障碍" to listOf(
         "躯体症状障碍",
         "疾病焦虑障碍",
-        "转换障碍（功能性神经症状障碍）",
+        "功能性神经症状障碍",
         "做作性障碍",
         "心理因素影响其他医学状况",
     ),
@@ -93,17 +99,13 @@ val DISORDER_ITEMS: List<Pair<String, List<String>>> = listOf(
         "异食癖",
         "反刍障碍",
     ),
-    "睡眠障碍" to listOf(
+    "睡眠-觉醒障碍" to listOf(
         "失眠障碍",
         "嗜睡障碍",
         "发作性睡病",
         "阻塞性睡眠呼吸暂停",
         "昼夜节律睡眠-觉醒障碍",
-        "睡行症",
-        "夜惊障碍",
-        "梦魇障碍",
-        "快速眼动睡眠行为障碍",
-        "不安腿综合征",
+        "异态睡眠",
     ),
     "人格障碍" to listOf(
         "偏执型人格障碍",
@@ -116,9 +118,9 @@ val DISORDER_ITEMS: List<Pair<String, List<String>>> = listOf(
         "回避型人格障碍",
         "依赖型人格障碍",
         "强迫型人格障碍",
-        "其他特定/未特定人格障碍",
     ),
 )
+
 
 /** 11 个类别名（顺序与 [DISORDER_ITEMS] 一致） */
 val DISORDER_CATEGORIES: List<String> = DISORDER_ITEMS.map { it.first }
@@ -144,11 +146,14 @@ data class DisorderCategory(
     val count: Int get() = selected.size + custom.size
 }
 
-/** 个人画像界面的状态：11 个类别各自的细分统计 */
+/** 个人画像界面的状态：11 个类别各自的细分统计 + 身体基本数据 */
 data class ProfileUiState(
     val groups: List<DisorderCategory> = DISORDER_ITEMS.map { (category, items) ->
         DisorderCategory(category, items, emptySet(), emptyList())
     },
+    val sex: String? = null,
+    val weightKg: Int? = null,
+    val heightCm: Int? = null,
 ) {
     /** 已统计的障碍总数 */
     val total: Int get() = groups.sumOf { it.count }
@@ -165,6 +170,9 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     val uiState: StateFlow<ProfileUiState> = repo.values.map { map ->
         val root = runCatching { JSONObject(map[KEY_DISORDERS] ?: "{}") }.getOrDefault(JSONObject())
         ProfileUiState(
+            sex = map[KEY_SEX]?.ifBlank { null },
+            weightKg = map[KEY_WEIGHT]?.ifBlank { null }?.toIntOrNull(),
+            heightCm = map[KEY_HEIGHT]?.toIntOrNull(),
             groups = DISORDER_ITEMS.map { (category, items) ->
                 val records = parseRecords(root.optJSONArray(category))
                 val predefined = PREDEFINED[category].orEmpty()
@@ -205,6 +213,15 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    /** 保存身体基本数据（性别/体重/身高，供联用预警的画像条件使用） */
+    fun savePhysical(sex: String?, weightKg: Int?, heightCm: Int?) {
+        viewModelScope.launch {
+            repo.put(KEY_SEX, sex.orEmpty())
+            repo.put(KEY_WEIGHT, weightKg?.toString().orEmpty())
+            repo.put(KEY_HEIGHT, heightCm?.toString().orEmpty())
+        }
+    }
+
     /** 读出当前类别记录 → 修改 → 写回（保留其它类别的数据） */
     private suspend fun mutate(
         category: String,
@@ -223,6 +240,9 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     }
 
     companion object {
+        const val KEY_SEX = "sex"
+        const val KEY_WEIGHT = "weightKg"
+        const val KEY_HEIGHT = "heightCm"
         private const val KEY_DISORDERS = "disorders"
 
         fun provideFactory(app: Application): ViewModelProvider.Factory = object : ViewModelProvider.Factory {

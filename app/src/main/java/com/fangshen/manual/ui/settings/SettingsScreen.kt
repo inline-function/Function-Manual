@@ -14,6 +14,7 @@ import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -83,37 +84,37 @@ fun SettingsScreen(
 
             item { SectionTitle("效应显示") }
             item {
-                EffectToggle("效应包（综合征）", settings.effectDisplay.showPacks) { v ->
-                    app.contentRepository.updateSettings(settings.copy(effectDisplay = settings.effectDisplay.copy(showPacks = v)))
+                EffectLevelRow("效应包（综合征）", settings.effectDisplay.packs) { v ->
+                    app.contentRepository.updateSettings(settings.copy(effectDisplay = settings.effectDisplay.copy(packs = v)))
                 }
             }
             item {
-                EffectToggle("急性 · 正面", settings.effectDisplay.acutePositive) { v ->
+                EffectLevelRow("急性 · 正面", settings.effectDisplay.acutePositive) { v ->
                     app.contentRepository.updateSettings(settings.copy(effectDisplay = settings.effectDisplay.copy(acutePositive = v)))
                 }
             }
             item {
-                EffectToggle("急性 · 负面", settings.effectDisplay.acuteNegative) { v ->
+                EffectLevelRow("急性 · 负面", settings.effectDisplay.acuteNegative) { v ->
                     app.contentRepository.updateSettings(settings.copy(effectDisplay = settings.effectDisplay.copy(acuteNegative = v)))
                 }
             }
             item {
-                EffectToggle("急性 · 中立", settings.effectDisplay.acuteNeutral) { v ->
+                EffectLevelRow("急性 · 中立", settings.effectDisplay.acuteNeutral) { v ->
                     app.contentRepository.updateSettings(settings.copy(effectDisplay = settings.effectDisplay.copy(acuteNeutral = v)))
                 }
             }
             item {
-                EffectToggle("慢性 · 正面", settings.effectDisplay.chronicPositive) { v ->
+                EffectLevelRow("慢性 · 正面", settings.effectDisplay.chronicPositive) { v ->
                     app.contentRepository.updateSettings(settings.copy(effectDisplay = settings.effectDisplay.copy(chronicPositive = v)))
                 }
             }
             item {
-                EffectToggle("慢性 · 负面", settings.effectDisplay.chronicNegative) { v ->
+                EffectLevelRow("慢性 · 负面", settings.effectDisplay.chronicNegative) { v ->
                     app.contentRepository.updateSettings(settings.copy(effectDisplay = settings.effectDisplay.copy(chronicNegative = v)))
                 }
             }
             item {
-                EffectToggle("慢性 · 中立", settings.effectDisplay.chronicNeutral) { v ->
+                EffectLevelRow("慢性 · 中立", settings.effectDisplay.chronicNeutral) { v ->
                     app.contentRepository.updateSettings(settings.copy(effectDisplay = settings.effectDisplay.copy(chronicNeutral = v)))
                 }
             }
@@ -188,22 +189,38 @@ private fun SwitchRow(
     }
 }
 
+/** 每类效应的显示等级：关 / 轻 / 中 / 重（单选） */
 @Composable
-private fun EffectToggle(title: String, checked: Boolean, onChange: (Boolean) -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable { onChange(!checked) },
+private fun EffectLevelRow(title: String, level: Int, onChange: (Int) -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
     ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+        )
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(top = 4.dp),
         ) {
-            Text(title, style = MaterialTheme.typography.bodyLarge)
-            Switch(checked = checked, onCheckedChange = onChange)
+            EffectChip(label = "关", selected = level == 0) { onChange(0) }
+            EffectChip(label = "轻", selected = level == 1) { onChange(1) }
+            EffectChip(label = "中", selected = level == 2) { onChange(2) }
+            EffectChip(label = "重", selected = level == 3) { onChange(3) }
         }
     }
+}
+
+@Composable
+private fun EffectChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = { Text(label) },
+    )
 }
 
 @Composable

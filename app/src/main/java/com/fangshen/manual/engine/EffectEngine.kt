@@ -78,6 +78,8 @@ object EffectEngine {
         ageYears: Int? = null,
         alertRules: List<AlertRule> = emptyList(),
         profileFlags: Set<String> = emptySet(),
+        profileSex: String? = null,
+        profileWeightKg: Int? = null,
     ): Result {
         val weights = mutableMapOf<String, Int>()
         val sources = mutableMapOf<String, MutableSet<String>>()
@@ -158,6 +160,12 @@ object EffectEngine {
             for (rule in alertRules) {
                 if (!rule.enabled) continue
                 if (activeDrugs.none { it.matches(rule.drug) }) continue
+                // v5 画像条件先过滤
+                if (rule.conditionSex != null && profileSex != rule.conditionSex) continue
+                if (rule.conditionWeightMin != null &&
+                    (profileWeightKg == null || profileWeightKg < rule.conditionWeightMin)) continue
+                if (rule.conditionWeightMax != null &&
+                    (profileWeightKg == null || profileWeightKg > rule.conditionWeightMax)) continue
                 val triggered = when {
                     rule.isProfileRule -> rule.withProfile!! in profileFlags
                     !rule.withDrug.isNullOrEmpty() -> activeDrugs.any { it.matches(rule.withDrug!!) }

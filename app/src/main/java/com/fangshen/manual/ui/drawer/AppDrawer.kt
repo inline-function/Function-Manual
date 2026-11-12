@@ -13,6 +13,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CleaningServices
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Receipt
+import androidx.compose.material.icons.rounded.Article
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.AutoStories
 import androidx.compose.material.icons.rounded.Medication
@@ -89,6 +91,13 @@ fun AppDrawer(
                 onNavigate = onNavigate,
             )
             DrawerItem(
+                label = "报告",
+                description = "按日期编写的服药记录报告",
+                icon = Icons.Rounded.Article,
+                route = Routes.REPORTS,
+                onNavigate = onNavigate,
+            )
+            DrawerItem(
                 label = "个人画像",
                 description = "统计精神障碍",
                 icon = Icons.Rounded.Person,
@@ -126,7 +135,7 @@ fun AppDrawer(
             DrawerItem(
                 label = "处方",
                 description = "创建您的药物组合",
-                icon = Icons.Rounded.Description,
+                icon = Icons.Rounded.Receipt,
                 route = Routes.PRESCRIPTIONS,
                 onNavigate = onNavigate,
             )

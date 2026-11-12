@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.first
 import androidx.lifecycle.ViewModel
 import com.fangshen.manual.FangShenApplication
 import com.fangshen.manual.data.entity.CustomDrugEntity
@@ -17,6 +18,9 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.StateFlow
+import com.fangshen.manual.model.parseActiveMetabolites
+import com.fangshen.manual.model.parseAttributes
 
 data class DrugListUiState(
     val drugs: List<DrugInfo> = emptyList(),
@@ -131,6 +135,26 @@ class DrugDetailViewModel(
             initialValue = null,
         )
 
+    /** 与近期（7 天内）在服药物的联用预警，仅保留涉及本药者 */
+    val interactions: StateFlow<List<com.fangshen.manual.engine.InteractionEngine.Warning>> =
+        combine(uiState, getApplication<FangShenApplication>().entryRepository.entries) { drug, entries ->
+            val weekAgo = System.currentTimeMillis() - 7L * 86_400_000L
+            val other = entries.filter {
+                it.type == "DOSE" && it.drugId != null && it.drugId != drugId && it.eventTime >= weekAgo
+            }
+            if (drug == null || other.isEmpty()) emptyList() else {
+                val ids = (other.mapNotNull { it.drugId } + drugId).toSet()
+                val all = drugs.first()
+                val involved = all.filter { it.id in ids }
+                com.fangshen.manual.engine.InteractionEngine.check(involved)
+                    .filter { it.drugName == drug.name || it.otherDrugName == drug.name }
+            }
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000L),
+            initialValue = emptyList(),
+        )
+
     fun delete(onDone: () -> Unit) {
         val drug = uiState.value ?: return
         if (drug.isBuiltin) return
@@ -182,7 +206,28 @@ data class DrugEditForm(
     val addictive: Boolean = false,
     val addictionRatePerHour: String = "",
     val toleranceGroup: String = "",
+    // v5：活性代谢物（引用内置键或 custom:id）
+    val metabolites: List<MetaboliteRow> = emptyList(),
+    // v5：展示属性（纯展示）
+    val attributes: List<AttributeRow> = emptyList(),
+    /** 候选引用列表：key → 显示名 */
+    val candidates: List<Pair<String, String>> = emptyList(),
     val error: String? = null,
+)
+
+/** 展示属性编辑行：属性名 + 区间两端（-1..5） */
+data class AttributeRow(
+    val name: String = "",
+    val from: Int = 0,
+    val to: Int = 3,
+)
+
+/** 活性代谢物编辑行：key 引用、转化分数 fm%、效价、形成延迟（小时） */
+data class MetaboliteRow(
+    val key: String = "",
+    val fmPct: String = "100",
+    val potency: String = "1",
+    val delayHours: String = "",
 )
 
 data class DoseRuleRow(
@@ -205,6 +250,13 @@ class DrugEditViewModel(
         private set
 
     init {
+        viewModelScope.launch {
+            val app = getApplication<FangShenApplication>()
+            val cands = app.drugRepository.drugs.first().map { d ->
+                ((if (d.isBuiltin) d.builtinKey else d.id) ?: d.id) to d.name
+            }
+            form.value = form.value.copy(candidates = cands)
+        }
         if (drugId != "new") {
             viewModelScope.launch {
                 val app = getApplication<FangShenApplication>()
@@ -237,6 +289,17 @@ class DrugEditViewModel(
                         addictive = entity.addictive,
                         addictionRatePerHour = entity.addictionRatePerHour.toString(),
                         toleranceGroup = entity.toleranceGroup.orEmpty(),
+                        metabolites = parseActiveMetabolites(entity.activeMetabolites).map {
+                            MetaboliteRow(
+                                it.key,
+                                it.fmPct.toString(),
+                                it.potency.toString(),
+                                it.formationDelayHours?.toString() ?: "",
+                            )
+                        },
+                        attributes = parseAttributes(entity.attributes).map {
+                            AttributeRow(it.name, it.from, it.to)
+                        },
                     )
                 }
             }
@@ -292,6 +355,24 @@ class DrugEditViewModel(
                 addictive = f.addictive,
                 addictionRatePerHour = f.addictionRatePerHour.toDoubleOrNull() ?: 0.0,
                 toleranceGroup = f.toleranceGroup.trim().ifEmpty { null },
+                activeMetabolites = f.metabolites
+                    .filter { it.key.isNotBlank() && it.fmPct.toIntOrNull() != null }
+                    .joinToString(";") { row ->
+                        listOf(
+                            row.key.trim(),
+                            (row.fmPct.toIntOrNull() ?: 100).toString(),
+                            (row.potency.toDoubleOrNull() ?: 1.0).toString(),
+                            row.delayHours.trim(),
+                        ).filter { it.isNotEmpty() }.joinToString(":")
+                    }
+                    .ifEmpty { null },
+                attributes = f.attributes
+                    .filter { it.name.isNotBlank() }
+                    .joinToString(";") { row ->
+                        row.name.trim() + ":" + minOf(row.from, row.to).coerceIn(-1, 5) +
+                            ":" + maxOf(row.from, row.to).coerceIn(-1, 5)
+                    }
+                    .ifEmpty { null },
             )
             val rules = f.rules
                 .filter {

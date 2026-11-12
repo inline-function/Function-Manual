@@ -14,6 +14,7 @@ import com.fangshen.manual.model.Route
 import com.fangshen.manual.model.effectiveRoutes
 import java.math.BigDecimal
 import com.fangshen.manual.model.DrugInfo
+import com.fangshen.manual.model.drugId
 import com.fangshen.manual.engine.DrugDoseInfo
 import com.fangshen.manual.engine.EffectEngine
 import com.fangshen.manual.engine.InteractionEngine
@@ -58,6 +59,7 @@ class HomeViewModel(
     drugs: kotlinx.coroutines.flow.Flow<List<DrugInfo>>,
     alertRules: kotlinx.coroutines.flow.Flow<List<AlertRule>>,
     profileFlags: kotlinx.coroutines.flow.Flow<Set<String>>,
+    profileValues: kotlinx.coroutines.flow.Flow<Map<String, String>>,
 ) : AndroidViewModel(application) {
 
     private val chartUnit = MutableStateFlow(DoseUnit.MG)
@@ -67,7 +69,11 @@ class HomeViewModel(
 
     private var queueIdSeq = 0L
 
-    val uiState = combine(entries, drugs, chartUnit, alertRules, profileFlags) { entryList, drugList, unit, rules, flags ->
+    private val profileBundle = combine(alertRules, profileFlags, profileValues) { rules, flags, prof ->
+        Triple(rules, flags, prof)
+    }
+
+    val uiState = combine(entries, drugs, chartUnit, profileBundle) { entryList, drugList, unit, (rules, flags, prof) ->
         val now = System.currentTimeMillis()
         val baseDoses = entryList.filter {
             it.type == "DOSE" && it.doseAmount != null && it.drugId != null && it.eventTime <= now
@@ -80,7 +86,11 @@ class HomeViewModel(
         }
         // 活性代谢物：母药每次服药生成一条"伪服药"（该代谢物条目自身的 t½ 与效应规则生效）
         val doses = baseDoses + baseDoses.flatMap { metabolitePseudoDoses(it, drugList) }
-        val result = EffectEngine.compute(doses, now, alertRules = rules, profileFlags = flags)
+        val result = EffectEngine.compute(
+            doses, now, alertRules = rules, profileFlags = flags,
+            profileSex = prof["sex"],
+            profileWeightKg = prof["weightKg"]?.toIntOrNull(),
+        )
         val warnings = InteractionEngine.check(result.activeDrugs)
         // 曲线用剂量：真实 DOSE 条目 + 代谢物伪条目（不写盘、不进入台账时间线）
         val chartEntries = entryList.filter {
@@ -194,7 +204,7 @@ class HomeViewModel(
         drugList: List<DrugInfo>,
     ): List<EntryEntity> = doses.flatMap { dose ->
         dose.drug.activeMetabolites.mapNotNull { meta ->
-            val entry = drugList.firstOrNull { it.id == "builtin:" + meta.key } ?: return@mapNotNull null
+            val entry = drugList.firstOrNull { it.id == meta.drugId() } ?: return@mapNotNull null
             val delayHours = meta.formationDelayHours ?: dose.drug.halfLifeHours.coerceIn(0.25, 24.0) * 0.25
             val time = dose.time + (delayHours * 3_600_000.0).toLong()
             // 即使代谢物尚未形成（时间在未来）也保留：曲线该时刻前自然为 0
@@ -250,6 +260,7 @@ private val MG_PER_UNIT = mapOf(
                     drugs = a.drugRepository.drugs,
                     alertRules = a.alertRepository.rules,
                     profileFlags = a.profileRepository.disorderFlags,
+        profileValues = a.profileRepository.values,
                 ) as T
             }
         }

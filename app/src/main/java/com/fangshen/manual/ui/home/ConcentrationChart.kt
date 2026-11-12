@@ -38,12 +38,14 @@ import com.fangshen.manual.core.formatDoseBD
 import com.fangshen.manual.data.entity.EntryEntity
 import com.fangshen.manual.model.DoseUnit
 import com.fangshen.manual.model.DrugInfo
+import com.fangshen.manual.model.drugId
 import com.fangshen.manual.model.Route
 import com.fangshen.manual.model.SubjectiveTagColors
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberBottom
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberStart
 import com.patrykandpatrick.vico.compose.cartesian.layer.continuous
+import com.patrykandpatrick.vico.compose.cartesian.layer.dashed
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLine
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
@@ -71,7 +73,7 @@ import com.patrykandpatrick.vico.core.common.data.ExtraStore
 import java.math.RoundingMode
 import kotlin.math.roundToInt
 
-private val MinutesPerTickKey = ExtraStore.Key<Int>()
+private val HoursPerTickKey = ExtraStore.Key<Int>()
 
 /** 纵轴刻度间距（由曲线最大值算出的“好看”步长，写入模型 extras 供刻度与格式化共用） */
 private val ConcentrationStepKey = ExtraStore.Key<Double>()
@@ -305,14 +307,14 @@ private fun ChartCanvas(
                             )
                         }
                         com.fangshen.manual.engine.PkEngine.concentrationSeries(
-                            drug, doseList, xs.map { it / 60.0 },
+                            drug, doseList, xs,
                         )
                     } else {
                         xs.map { x ->
                             past.sumOf { point ->
                                 val hoursAgo = (now - point.time) / 3_600_000.0
                                 com.fangshen.manual.engine.PkEngine.concentrationAt(
-                                    drug, point.amount.toDouble(), hoursAgo + x / 60.0, point.route,
+                                    drug, point.amount.toDouble(), hoursAgo + x, point.route,
                                 )
                             }
                         }
@@ -325,7 +327,12 @@ private fun ChartCanvas(
                 DoseUnit.G -> 1000.0
                 DoseUnit.MCG -> 0.001
             }
-            val cursorYs = visibleCursorLines.map { line -> line.ys.map { it / unitFactor } }
+            // 成瘾游标线画成与 x 轴平行的水平直线：取当前时刻（x=0）的游标高度
+            val nowIdx = xs.indexOfFirst { it >= 0.0 }.coerceAtLeast(0)
+            val cursorYs = visibleCursorLines.map { line ->
+                val aNow = (line.ys.getOrElse(nowIdx) { line.ys.lastOrNull() ?: 0.0 }) / unitFactor
+                xs.map { aNow }
+            }
             Triple(xs, seriesYs, cursorYs)
         }
         // 纵轴刻度间距按曲线（含游标线）峰值确定，写入 extras 供坐标轴与标签格式化共用
@@ -334,7 +341,7 @@ private fun ChartCanvas(
             .coerceAtLeast(0.0)
         modelProducer.runTransaction {
             extras { extra ->
-                extra[MinutesPerTickKey] = 72
+                extra[HoursPerTickKey] = 12
                 extra[ConcentrationStepKey] = niceStep(yMax)
             }
             lineSeries {
@@ -356,14 +363,19 @@ private fun ChartCanvas(
                         )
                     } else {
                         val parent = seriesDrugs.firstOrNull { it.id == highlightedDrugId }
-                        val metaboliteIds = parent?.activeMetabolites?.map { "builtin:" + it.key } ?: emptyList()
+                        val metaboliteIds = parent?.activeMetabolites.orEmpty().map { it.drugId() }
+                        // 代谢物曲线颜色与前药一致
+                        val metaboliteColors = seriesDrugs.flatMap { d ->
+                            d.activeMetabolites.map { it.drugId() to SubjectiveTagColors.colorOf(d) }
+                        }.toMap()
                         val drugLines = seriesDrugs.map { drug ->
                             val focused = highlightedDrugId == null || highlightedDrugId == drug.id ||
                                 drug.id in metaboliteIds
+                            val baseColor = metaboliteColors[drug.id] ?: SubjectiveTagColors.colorOf(drug)
                             LineCartesianLayer.rememberLine(
                                 fill = LineCartesianLayer.LineFill.single(
                                     fill(
-                                        Color(SubjectiveTagColors.colorOf(drug)).copy(
+                                        Color(baseColor).copy(
                                             alpha = if (focused) 1f else 0.15f,
                                         ),
                                     ),
@@ -374,13 +386,15 @@ private fun ChartCanvas(
                                 pointProvider = null,
                             )
                         }
-                        // 成瘾游标线：虚线，颜色取其首个成员的标签色
+                        // 成瘾游标线：与 x 轴平行的水平虚线，颜色取其首个成员的标签色
                         val cursorLinesSpec = visibleCursorLines.map { line ->
                             val base = Color(line.colorArgb)
                             LineCartesianLayer.rememberLine(
                                 fill = LineCartesianLayer.LineFill.single(fill(base.copy(alpha = 0.85f))),
-                                stroke = LineCartesianLayer.LineStroke.continuous(
-                                    thickness = 1.dp,
+                                stroke = LineCartesianLayer.LineStroke.dashed(
+                                    thickness = 1.5.dp,
+                                    dashLength = 6.dp,
+                                    gapLength = 4.dp,
                                 ),
                                 pointProvider = null,
                             )
@@ -398,7 +412,7 @@ private fun ChartCanvas(
             bottomAxis = HorizontalAxis.rememberBottom(
                 valueFormatter = remember { MinuteFormatter() },
                 itemPlacer = remember { FixedTicksItemPlacer() },
-                guideline = remember { LineComponent(fill = Fill(0xFFB8B3C4.toInt()), thicknessDp = 1f) },
+                guideline = remember { LineComponent(fill = Fill(0xFFA79FB8.toInt()), thicknessDp = 1.4f) },
             ),
         ),
         modelProducer = modelProducer,
@@ -416,72 +430,57 @@ private fun ChartCanvas(
  * 取消 Vico 自适应间距与可见范围裁剪，保证五条参考线与标签总是齐全。
  */
 /**
- * 固定五道竖线刻度：-720, 0, 720, 1440, 2160（-12h、当前、+12h、+24h、+36h）。
- * 标签与竖线均取这五个值；几何（边界标签、边距）与 Vico aligned 放置器保持一致，
- * 避免拉伸或裁剪图表区域。
+ * 固定三道竖线刻度：当前（x=0）、+12 小时、+24 小时，将图像四等分。
  */
 private class FixedTicksItemPlacer : HorizontalAxis.ItemPlacer {
-    private fun CartesianMeasuringContext.tickValues(): List<Double> =
-        (0..4).map { ranges.minX + it * 720.0 }
+    private fun values(): List<Double> = listOf(0.0, 12.0, 24.0)
 
-    private fun CartesianMeasuringContext.measuredValues(): List<Double> = buildList {
-        add(ranges.minX)
-        if (ranges.xLength < ranges.xStep) return@buildList
-        add(ranges.minX + ranges.xStep * kotlin.math.floor(ranges.xLength / ranges.xStep))
-        if (ranges.xLength >= 2 * ranges.xStep) {
-            val midSteps = (ranges.xLength / 2 / ranges.xStep).toInt()
-            add(ranges.minX + ranges.xStep * midSteps)
-        }
-    }
+    override fun getShiftExtremeLines(context: CartesianDrawingContext): Boolean = false
 
-    override fun getShiftExtremeLines(context: CartesianDrawingContext): Boolean = true
+    override fun getFirstLabelValue(context: CartesianMeasuringContext, maxLabelWidth: Float): Double? = null
 
-    override fun getFirstLabelValue(context: CartesianMeasuringContext, maxLabelWidth: Float): Double? =
-        context.ranges.minX
-
-    override fun getLastLabelValue(context: CartesianMeasuringContext, maxLabelWidth: Float): Double? =
-        context.ranges.maxX
+    override fun getLastLabelValue(context: CartesianMeasuringContext, maxLabelWidth: Float): Double? = null
 
     override fun getLabelValues(
         context: CartesianDrawingContext,
         visibleXRange: ClosedFloatingPointRange<Double>,
         fullXRange: ClosedFloatingPointRange<Double>,
         maxLabelWidth: Float,
-    ): List<Double> = context.tickValues()
+    ): List<Double> = values()
 
     override fun getLineValues(
         context: CartesianDrawingContext,
         visibleXRange: ClosedFloatingPointRange<Double>,
         fullXRange: ClosedFloatingPointRange<Double>,
         maxLabelWidth: Float,
-    ): List<Double>? = context.tickValues()
+    ): List<Double>? = values()
 
     override fun getWidthMeasurementLabelValues(
         context: CartesianMeasuringContext,
         layerDimensions: CartesianLayerDimensions,
         fullXRange: ClosedFloatingPointRange<Double>,
-    ): List<Double> = context.measuredValues()
+    ): List<Double> = values()
 
     override fun getHeightMeasurementLabelValues(
         context: CartesianMeasuringContext,
         layerDimensions: CartesianLayerDimensions,
         fullXRange: ClosedFloatingPointRange<Double>,
         maxLabelWidth: Float,
-    ): List<Double> = context.measuredValues()
+    ): List<Double> = values()
 
     override fun getStartLayerMargin(
         context: CartesianMeasuringContext,
         layerDimensions: CartesianLayerDimensions,
         tickThickness: Float,
         maxLabelWidth: Float,
-    ): Float = (tickThickness - layerDimensions.unscalableStartPadding).coerceAtLeast(0f)
+    ): Float = 0f
 
     override fun getEndLayerMargin(
         context: CartesianMeasuringContext,
         layerDimensions: CartesianLayerDimensions,
         tickThickness: Float,
         maxLabelWidth: Float,
-    ): Float = (tickThickness - layerDimensions.unscalableEndPadding).coerceAtLeast(0f)
+    ): Float = 0f
 }
 
 private class MinuteFormatter : CartesianValueFormatter {
@@ -490,12 +489,10 @@ private class MinuteFormatter : CartesianValueFormatter {
         value: Double,
         verticalAxisPosition: Axis.Position.Vertical?,
     ): CharSequence {
-        val minutes = value.roundToInt()
-        android.util.Log.d("FSCHART", "fmt v=$value")
+        val hours = value.roundToInt()
         return when {
-            minutes == 0 -> "现在"
-            minutes % 60 == 0 -> (if (minutes > 0) "+" else "") + (minutes / 60) + "小时"
-            else -> (if (minutes > 0) "+" else "") + minutes + "分"
+            hours == 0 -> "现在"
+            else -> (if (hours > 0) "+" else "") + hours + "小时"
         }
     }
 }

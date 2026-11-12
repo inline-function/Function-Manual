@@ -39,6 +39,7 @@ internal fun d(
         addictive: Boolean = false,
         addictionRatePerHour: Double = 0.0,
         toleranceGroup: String? = null,
+        attributes: List<DrugAttribute> = emptyList(),
     ) = DrugInfo(
         id = "builtin:$key", name = name, colorArgb = colorArgb,
         tabletDose = tabletDose, doseUnit = doseUnit, managementClass = managementClass,
@@ -51,6 +52,7 @@ internal fun d(
         vdLiters = vdLiters, hiddenFromCatalog = hidden,
         description = description, routes = routes, addictive = addictive,
         addictionRatePerHour = addictionRatePerHour, toleranceGroup = toleranceGroup,
+        attributes = attributes,
     )
 
 object DrugCatalog {
@@ -61,6 +63,7 @@ object DrugCatalog {
         DrugCatalogPart2.entries,
         DrugCatalogPart3.entries,
         DrugCatalogPart4.entries,
+        DrugCatalogPart5.entries,
     ).flatten()
 
     private val byKey = all.associateBy { it.builtinKey }

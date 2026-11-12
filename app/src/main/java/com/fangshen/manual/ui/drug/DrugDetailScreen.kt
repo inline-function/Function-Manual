@@ -24,6 +24,10 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -106,6 +110,7 @@ fun DrugDetailScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            InteractionWarningCards(viewModel = viewModel)
             DrugDetailContent(drug = d)
             if (!d.isBuiltin) {
                 OutlinedButton(
@@ -131,5 +136,47 @@ fun DrugDetailScreen(
             },
             onDismiss = { showDelete = false },
         )
+    }
+}
+
+/** 联用预警：近 7 天有在服的其他药物且存在机制冲突时以黄色条卡片提示 */
+@Composable
+private fun InteractionWarningCards(viewModel: DrugDetailViewModel) {
+    val warnings by viewModel.interactions.collectAsStateWithLifecycle()
+    if (warnings.isEmpty()) return
+    warnings.forEach { w ->
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color(0xFFFFF3E0),
+                contentColor = Color(0xFF5D4037),
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+        ) {
+            Column(
+                modifier = Modifier.padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Rounded.Warning,
+                        contentDescription = null,
+                        tint = Color(0xFFEF6C00),
+                        modifier = Modifier.padding(end = 6.dp).size(18.dp),
+                    )
+                    Text(
+                        text = w.kind.label + "：" + w.drugName + " 与 " + w.otherDrugName,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+                if (w.enzyme.isNotBlank()) {
+                    Text("相关机制：" + w.enzyme, style = MaterialTheme.typography.bodySmall)
+                }
+                Text(w.message, style = MaterialTheme.typography.bodySmall)
+            }
+        }
     }
 }

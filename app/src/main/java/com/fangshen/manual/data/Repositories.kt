@@ -123,12 +123,17 @@ class AlertRepository(private val store: JsonDataStore) {
         data.alerts.filter { it.name.isNotEmpty() }.sortedByDescending { it.id }
     }
 
-    suspend fun add(name: String, drug: String, withDrug: String?, withProfile: String?, effect: String, weight: Int) = store.write {
+    suspend fun add(
+        name: String, drug: String, withDrug: String?, withProfile: String?, effect: String, weight: Int,
+        conditionSex: String? = null, conditionWeightMin: Int? = null, conditionWeightMax: Int? = null,
+    ) = store.write {
         val id = (it.alerts.maxOfOrNull { r -> r.id } ?: 0L) + 1L
         val rule = AlertRule(
             id = id, name = name, enabled = true,
             drug = drug, withDrug = withDrug, withProfile = withProfile,
             effect = effect, weight = weight,
+            conditionSex = conditionSex, conditionWeightMin = conditionWeightMin,
+            conditionWeightMax = conditionWeightMax,
         )
         it.copy(alerts = it.alerts + rule) to id
     }
@@ -151,7 +156,7 @@ class AlertRepository(private val store: JsonDataStore) {
 /**
  * 串行写：同一时刻只有一个写事务落盘，[block] 返回 (新数据, 结果)。
  */
-private suspend fun <T> JsonDataStore.write(
+suspend fun <T> JsonDataStore.write(
     block: (JsonData) -> Pair<JsonData, T>,
 ): T = STORE_LOCK.withLock {
     val (data, result) = block(snapshot())

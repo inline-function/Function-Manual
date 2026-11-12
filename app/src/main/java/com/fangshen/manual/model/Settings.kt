@@ -15,15 +15,19 @@ data class AppSettings(
     val effectDisplay: EffectDisplay = EffectDisplay(),
 )
 
-/** 效应条/词典的显示开关：按"急/慢 × 正/负/中立"分类，外加效应包 */
+/**
+ * 效应条/词典的显示等级：按"急/慢 × 正/负/中立"分类，外加效应包。
+ * 每类为 0–3 的等级：0 关闭；1 轻（权重>0）；2 中（权重≥2）；3 重（权重≥3）。
+ * 等级 n 表示只显示该类中"至少 n 度"的效应。
+ */
 data class EffectDisplay(
-    val showPacks: Boolean = true,
-    val acutePositive: Boolean = true,
-    val acuteNegative: Boolean = true,
-    val acuteNeutral: Boolean = true,
-    val chronicPositive: Boolean = true,
-    val chronicNegative: Boolean = true,
-    val chronicNeutral: Boolean = true,
+    val packs: Int = 3,
+    val acutePositive: Int = 3,
+    val acuteNegative: Int = 3,
+    val acuteNeutral: Int = 3,
+    val chronicPositive: Int = 3,
+    val chronicNegative: Int = 3,
+    val chronicNeutral: Int = 3,
 )
 
 /** 按显示开关过滤后的效应分类键 */
@@ -48,9 +52,9 @@ fun effectCategory(name: String, displayChronic: Boolean): EffectCategory? {
     }
 }
 
-/** 分类是否被设置允许显示 */
-fun EffectCategory.enabledIn(d: EffectDisplay): Boolean = when (this) {
-    EffectCategory.PACK -> d.showPacks
+/** 分类在设置中的等级（0 关闭 / 1 轻 / 2 中 / 3 重） */
+fun EffectCategory.levelIn(d: EffectDisplay): Int = when (this) {
+    EffectCategory.PACK -> d.packs
     EffectCategory.ACUTE_POSITIVE -> d.acutePositive
     EffectCategory.ACUTE_NEGATIVE -> d.acuteNegative
     EffectCategory.ACUTE_NEUTRAL -> d.acuteNeutral
@@ -58,6 +62,17 @@ fun EffectCategory.enabledIn(d: EffectDisplay): Boolean = when (this) {
     EffectCategory.CHRONIC_NEGATIVE -> d.chronicNegative
     EffectCategory.CHRONIC_NEUTRAL -> d.chronicNeutral
 }
+
+/** 权重对应的"度"：1 轻 / 2 中 / 3 重 */
+fun effectDegree(weight: Int): Int = when {
+    weight >= 3 -> 3
+    weight >= 2 -> 2
+    else -> 1
+}
+
+/** 分类是否被设置允许显示某个权重的效应 */
+fun EffectCategory.enabledIn(d: EffectDisplay, weight: Int = 1): Boolean =
+    levelIn(d) >= effectDegree(weight) && levelIn(d) > 0
 
 // —— 用户自定义内容（效应 / 效应包 / 联用配对）——
 
@@ -109,7 +124,7 @@ fun parseSettings(o: JSONObject): AppSettings = AppSettings(
 )
 
 private fun EffectDisplay.toJson(): JSONObject = JSONObject().apply {
-    put("showPacks", showPacks)
+    put("packs", packs)
     put("acutePositive", acutePositive)
     put("acuteNegative", acuteNegative)
     put("acuteNeutral", acuteNeutral)
@@ -119,13 +134,14 @@ private fun EffectDisplay.toJson(): JSONObject = JSONObject().apply {
 }
 
 private fun parseEffectDisplay(o: JSONObject): EffectDisplay = EffectDisplay(
-    showPacks = o.optBoolean("showPacks", true),
-    acutePositive = o.optBoolean("acutePositive", true),
-    acuteNegative = o.optBoolean("acuteNegative", true),
-    acuteNeutral = o.optBoolean("acuteNeutral", true),
-    chronicPositive = o.optBoolean("chronicPositive", true),
-    chronicNegative = o.optBoolean("chronicNegative", true),
-    chronicNeutral = o.optBoolean("chronicNeutral", true),
+    // 兼容旧布尔开关：true → 3（重），false → 0（关）
+    packs = o.optInt("packs", if (o.optBoolean("showPacks", true)) 3 else 0),
+    acutePositive = o.optInt("acutePositive", if (o.optBoolean("acutePositive", true)) 3 else 0),
+    acuteNegative = o.optInt("acuteNegative", if (o.optBoolean("acuteNegative", true)) 3 else 0),
+    acuteNeutral = o.optInt("acuteNeutral", if (o.optBoolean("acuteNeutral", true)) 3 else 0),
+    chronicPositive = o.optInt("chronicPositive", if (o.optBoolean("chronicPositive", true)) 3 else 0),
+    chronicNegative = o.optInt("chronicNegative", if (o.optBoolean("chronicNegative", true)) 3 else 0),
+    chronicNeutral = o.optInt("chronicNeutral", if (o.optBoolean("chronicNeutral", true)) 3 else 0),
 )
 
 fun CustomEffect.toJson(): JSONObject = JSONObject().apply {

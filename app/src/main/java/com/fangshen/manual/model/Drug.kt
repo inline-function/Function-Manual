@@ -94,6 +94,8 @@ data class DrugInfo(
     val addictionRatePerHour: Double = 0.0,
     /** 交叉耐药组：同组药物共享同一条成瘾游标线 */
     val toleranceGroup: String? = null,
+    // —— v5 展示属性（不影响效应与药代引擎）——
+    val attributes: List<DrugAttribute> = emptyList(),
     // —— v3 药代扩展（默认回退线性 Bateman，保持旧数据兼容）——
     val nonlinearity: MichaelisMenten? = null,
     val autoInduction: AutoInduction? = null,
@@ -133,7 +135,50 @@ fun CustomDrugEntity.toDrugInfo(
     addictive = addictive,
     addictionRatePerHour = addictionRatePerHour,
     toleranceGroup = toleranceGroup,
+    activeMetabolites = parseActiveMetabolites(activeMetabolites),
+    attributes = parseAttributes(attributes),
 )
+
+/** 解析自定义药物的活性代谢物声明：分号分组 "key:fmPct:potency:delayHours"（后两项可省略） */
+fun parseActiveMetabolites(s: String?): List<ActiveMetabolite> =
+    s?.split(";")?.mapNotNull { item ->
+        val p = item.split(":").map { it.trim() }.filter { it.isNotEmpty() }
+        if (p.isEmpty()) return@mapNotNull null
+        val key = p[0]
+        val fm = p.getOrNull(1)?.toIntOrNull() ?: return@mapNotNull null
+        ActiveMetabolite(
+            key = key,
+            fmPct = fm.coerceIn(0, 200),
+            potency = p.getOrNull(2)?.toDoubleOrNull() ?: 1.0,
+            formationDelayHours = p.getOrNull(3)?.toDoubleOrNull(),
+        )
+    } ?: emptyList()
+
+/** 代谢物引用解析为条目 id：custom:id 原样，内置键加 builtin: 前缀 */
+fun ActiveMetabolite.drugId(): String = if (key.startsWith("custom:")) key else "builtin:" + key
+
+/**
+ * 药物展示属性的七个等级：负 / 无 / 正极轻 / 正轻度 / 正中度 / 正重度 / 正极重。
+ * 区间两端均为该序号值（-1..5），属性条按区间着色：负段红色，无及正段蓝色。
+ */
+val ATTRIBUTE_LEVELS: List<String> = listOf("负", "无", "正极轻", "正轻度", "正中度", "正重度", "正极重")
+
+fun attributeLevelLabel(value: Int): String =
+    ATTRIBUTE_LEVELS.getOrElse(value + 1) { "无" }
+
+/** 药物展示属性：名称 + 两点闭区间（纯展示，不参与效应/药代引擎） */
+data class DrugAttribute(val name: String, val from: Int, val to: Int)
+
+/** 解析自定义药物属性声明：分号分组 "name:from:to" */
+fun parseAttributes(text: String?): List<DrugAttribute> =
+    text?.split(";")?.mapNotNull { item ->
+        val p = item.split(":").map { it.trim() }.filter { it.isNotEmpty() }
+        if (p.isEmpty()) return@mapNotNull null
+        val from = p.getOrNull(1)?.toIntOrNull() ?: return@mapNotNull null
+        val to = p.getOrNull(2)?.toIntOrNull() ?: return@mapNotNull null
+        if (from !in -1..5 || to !in -1..5) return@mapNotNull null
+        DrugAttribute(p[0], minOf(from, to), maxOf(from, to))
+    } ?: emptyList()
 
 fun Route.Companion.fromNameOrNull(name: String): Route? = runCatching { fromName(name) }.getOrNull()
 

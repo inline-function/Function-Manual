@@ -16,6 +16,9 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -50,6 +53,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.fangshen.manual.FangShenApplication
 import com.fangshen.manual.model.CustomInteraction
+import com.fangshen.manual.engine.InteractionEngine
+import androidx.compose.ui.graphics.Color
 import com.fangshen.manual.ui.LocalApplication
 import com.fangshen.manual.model.AlertRule
 import com.fangshen.manual.model.DrugCatalog
@@ -105,6 +110,9 @@ class AlertViewModel(application: Application) : AndroidViewModel(application) {
                     name = rule.name, drug = rule.drug,
                     withDrug = rule.withDrug, withProfile = rule.withProfile,
                     effect = rule.effect, weight = rule.weight,
+                    conditionSex = rule.conditionSex,
+                    conditionWeightMin = rule.conditionWeightMin,
+                    conditionWeightMax = rule.conditionWeightMax,
                 )
             } else {
                 app.alertRepository.update(rule)
@@ -194,6 +202,7 @@ fun AlertScreen(
                 }
             }
             item { CustomInteractionSection() }
+            item { BuiltinInteractionSection() }
             items(rules, key = { it.id }) { rule ->
                 AlertRuleCard(
                     rule = rule,
@@ -285,10 +294,26 @@ private fun AlertRuleCard(
 
 private fun ruleConditionText(rule: AlertRule, drugNames: List<String>): String {
     val a = matcherLabel(rule.drug, drugNames)
-    return when {
+    val cond = when {
         rule.isProfileRule -> "$a 与 画像「${rule.withProfile}」生效时"
         else -> "$a 与 ${matcherLabel(rule.withDrug.orEmpty(), drugNames)} 联用时"
     }
+    val extra = buildString {
+        if (rule.conditionSex != null) {
+            append(if (rule.conditionSex == "MALE") "·男性" else "·女性")
+        }
+        if (rule.conditionWeightMin != null || rule.conditionWeightMax != null) {
+            append("·体重")
+            rule.conditionWeightMin?.let { append("$it–") }
+            rule.conditionWeightMax?.let { append(it) }
+            if (rule.conditionWeightMin != null && rule.conditionWeightMax == null) {
+                append("kg 以上")
+            } else {
+                append("kg")
+            }
+        }
+    }
+    return if (extra.isEmpty()) cond else cond + " " + extra
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -311,6 +336,9 @@ private fun AlertRuleDialog(
     var profile by remember { mutableStateOf(rule.withProfile ?: "情感障碍") }
     var effect by remember { mutableStateOf(rule.effect) }
     var weight by remember { mutableIntStateOf(rule.weight) }
+    var conditionSex by remember { mutableStateOf(rule.conditionSex) }
+    var weightMin by remember { mutableStateOf(rule.conditionWeightMin?.toString() ?: "") }
+    var weightMax by remember { mutableStateOf(rule.conditionWeightMax?.toString() ?: "") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -380,6 +408,44 @@ private fun AlertRuleDialog(
                     options = effectOptions,
                     onValueChange = { effect = it },
                 )
+                // v5 画像条件（可选）：性别与体重区间
+                Text("附加条件（可空）", style = MaterialTheme.typography.labelLarge)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    FilterChip(
+                        selected = conditionSex == "MALE",
+                        onClick = { conditionSex = if (conditionSex == "MALE") null else "MALE" },
+                        label = { Text("男") },
+                    )
+                    FilterChip(
+                        selected = conditionSex == "FEMALE",
+                        onClick = { conditionSex = if (conditionSex == "FEMALE") null else "FEMALE" },
+                        label = { Text("女") },
+                    )
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    OutlinedTextField(
+                        value = weightMin,
+                        onValueChange = { weightMin = it.filter(Char::isDigit).take(3) },
+                        label = { Text("体重≥(kg)") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.weight(1f),
+                    )
+                    OutlinedTextField(
+                        value = weightMax,
+                        onValueChange = { weightMax = it.filter(Char::isDigit).take(3) },
+                        label = { Text("体重≤(kg)") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.weight(1f),
+                    )
+                }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -413,6 +479,9 @@ private fun AlertRuleDialog(
                             withProfile = if (isProfile) profile else null,
                             effect = effect.trim(),
                             weight = weight,
+                            conditionSex = conditionSex,
+                            conditionWeightMin = weightMin.ifBlank { null }?.toIntOrNull(),
+                            conditionWeightMax = weightMax.ifBlank { null }?.toIntOrNull(),
                         ),
                     )
                 },
@@ -653,4 +722,45 @@ private fun CustomInteractionDialog(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } },
     )
+}
+
+/** 内置联用预警：机制固定、用户不可编辑，以圆角卡片列出 */
+@Composable
+private fun BuiltinInteractionSection() {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = "内置联用预警",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(vertical = 6.dp),
+        )
+        InteractionEngine.BUILTIN_INTERACTIONS.forEach { (title, message) ->
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFFB3261E),
+                    )
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
 }

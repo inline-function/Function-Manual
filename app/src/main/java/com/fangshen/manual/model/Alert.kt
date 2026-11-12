@@ -22,7 +22,18 @@ data class AlertRule(
     val effect: String,
     /** 增加的权重 */
     val weight: Int,
+    // —— v5 画像条件（可叠加；为 null 表示不限制）——
+    /** 性别条件："MALE" 或 "FEMALE" */
+    val conditionSex: String? = null,
+    /** 体重下限（kg，含） */
+    val conditionWeightMin: Int? = null,
+    /** 体重上限（kg，含） */
+    val conditionWeightMax: Int? = null,
 ) {
+    /** 是否带有画像条件 */
+    val hasCondition: Boolean get() =
+        conditionSex != null || conditionWeightMin != null || conditionWeightMax != null
+
     val isProfileRule: Boolean get() = withProfile != null
 }
 

@@ -24,6 +24,8 @@ import androidx.compose.material.icons.rounded.Event
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
@@ -62,6 +64,11 @@ import com.fangshen.manual.ui.profile.DisorderCategory
 import com.fangshen.manual.ui.profile.DisorderRecord
 import com.fangshen.manual.ui.profile.DISORDER_DESCRIPTIONS
 import com.fangshen.manual.ui.profile.ProfileViewModel
+import com.fangshen.manual.ui.profile.ProfileUiState
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Button
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -217,6 +224,7 @@ fun ProfileScreen(
                     )
                 }
             }
+            PhysicalDataCard(state = state, onSave = { sex, w, h -> viewModel.savePhysical(sex, w, h) })
             state.groups.forEach { group ->
                 DisorderCategoryCard(
                     group = group,
@@ -284,6 +292,75 @@ private fun DisorderChip(
             style = MaterialTheme.typography.labelLarge,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
         )
+    }
+}
+
+/** 身体基本数据卡：性别/体重/身高，供联用预警的画像条件使用 */
+@Composable
+private fun PhysicalDataCard(state: ProfileUiState, onSave: (String?, Int?, Int?) -> Unit) {
+    var sex by remember { mutableStateOf(state.sex) }
+    var weight by remember { mutableStateOf(state.weightKg?.toString() ?: "") }
+    var height by remember { mutableStateOf(state.heightCm?.toString() ?: "") }
+    Card(shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                text = "身体数据",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = "用于部分联用预警按性别或体重区间生效；不填则相应条件不触发。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = sex == "MALE",
+                    onClick = { sex = if (sex == "MALE") null else "MALE" },
+                    label = { Text("男") },
+                )
+                FilterChip(
+                    selected = sex == "FEMALE",
+                    onClick = { sex = if (sex == "FEMALE") null else "FEMALE" },
+                    label = { Text("女") },
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = weight,
+                    onValueChange = { weight = it.filter(Char::isDigit).take(3) },
+                    label = { Text("体重 (kg)") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.weight(1f),
+                )
+                OutlinedTextField(
+                    value = height,
+                    onValueChange = { height = it.filter(Char::isDigit).take(3) },
+                    label = { Text("身高 (cm)") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "BMI " + run {
+                        val w = weight.toIntOrNull(); val h = height.toIntOrNull()
+                        if (w != null && h != null && h > 0) String.format("%.1f", w / (h / 100.0) / (h / 100.0)) else "—"
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(onClick = { onSave(sex, weight.ifBlank { null }?.toIntOrNull(), height.ifBlank { null }?.toIntOrNull()) }) {
+                    Text("保存")
+                }
+            }
+        }
     }
 }
 

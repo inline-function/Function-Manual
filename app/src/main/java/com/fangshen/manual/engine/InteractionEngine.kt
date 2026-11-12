@@ -75,14 +75,17 @@ object InteractionEngine {
     }
 
     /** 药效学危险配对：一侧具备 aTags 中任一标签，另一侧具备 bTags 中任一标签 */
-    private data class MechanismPair(
+    data class MechanismPair(
         val aTags: Set<String>,
         val bTags: Set<String>,
         val title: String,
         val message: (String, String) -> String,
-    )
+    ) {
+        val firstSide: String get() = aTags.first()
+        val secondSide: String get() = bTags.first()
+    }
 
-    private val MECHANISM_PAIRS = listOf(
+    val MECHANISM_PAIRS = listOf(
         MechanismPair(
             MAOI_TAGS, SEROTONERGIC_TAGS, "5-羟色胺毒性",
             { a, b -> "$a 与 $b 联用：单胺氧化酶抑制剂阻断 5-羟色胺降解，再叠加 5-HT 能药物，" +
@@ -119,6 +122,11 @@ object InteractionEngine {
                 "饮酒后应避免服用高剂量对乙酰氨基酚。" },
         ),
     )
+
+    /** 内置联用预警条目（预警页面向用户展示）：标题 + 普适措辞说明 */
+    val BUILTIN_INTERACTIONS: List<Pair<String, String>> = MECHANISM_PAIRS.map { pair ->
+        pair.title to pair.message(pair.firstSide, pair.secondSide)
+    }
 
     /** 同类机制药物过多时的负荷叠加警告 */
     private data class BurdenRule(
