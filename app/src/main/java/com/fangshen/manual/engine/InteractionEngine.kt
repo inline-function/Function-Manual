@@ -123,6 +123,50 @@ object InteractionEngine {
         ),
     )
 
+    /** 单药联用知识（资料页用）：涉及某药的内置机制配对 + 用户自定义配对，不依赖当前在服药物 */
+    data class DrugKnowledge(
+        val title: String,
+        val chipA: String,
+        val chipB: String,
+        val message: String,
+    )
+
+    /** 资料页"涉及本药"的联用知识：内置机制配对话两侧任一侧命中本药标签即收录；
+     * 自定义配对按药名或标签命中收录。 */
+    fun knowledgeFor(
+        drug: com.fangshen.manual.model.DrugInfo,
+        customs: List<com.fangshen.manual.model.CustomInteraction>,
+    ): List<DrugKnowledge> {
+        val out = mutableListOf<DrugKnowledge>()
+        val tags = (drug.subjectiveTags + drug.effectTags).toSet()
+        for (pair in MECHANISM_PAIRS) {
+            val hitA = tags.any { it in pair.aTags }
+            val hitB = tags.any { it in pair.bTags }
+            if (!hitA && !hitB) continue
+            out += DrugKnowledge(
+                title = pair.title,
+                chipA = pair.firstSide,
+                chipB = pair.secondSide,
+                message = pair.message(pair.firstSide, pair.secondSide),
+            )
+        }
+        for (cp in customs) {
+            if (!cp.enabled) continue
+            val hitA = matchesCustom(drug, cp.matcherA)
+            val hitB = matchesCustom(drug, cp.matcherB)
+            if (!hitA && !hitB) continue
+            val sideHit = if (hitA) cp.matcherA else cp.matcherB
+            val sideOther = if (hitA) cp.matcherB else cp.matcherA
+            out += DrugKnowledge(
+                title = cp.title.ifBlank { "自定义联用提示" },
+                chipA = sideHit,
+                chipB = sideOther,
+                message = cp.message.ifBlank { "两药存在用户标记的风险。" },
+            )
+        }
+        return out
+    }
+
     /** 内置联用预警条目（预警页面向用户展示）：标题 + 普适措辞说明 */
     val BUILTIN_INTERACTIONS: List<Pair<String, String>> = MECHANISM_PAIRS.map { pair ->
         pair.title to pair.message(pair.firstSide, pair.secondSide)

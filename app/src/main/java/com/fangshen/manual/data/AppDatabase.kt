@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.fangshen.manual.data.entity.CustomDrugEntity
 import com.fangshen.manual.data.entity.CustomDrugNeuroEntity
 import com.fangshen.manual.data.entity.CustomDrugRuleEntity
@@ -18,7 +20,7 @@ import com.fangshen.manual.data.entity.ProfileEntity
         EntryEntity::class,
         ProfileEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -37,7 +39,17 @@ abstract class AppDatabase : RoomDatabase() {
                 context.applicationContext,
                 AppDatabase::class.java,
                 "fangshen_manual.db",
-            ).fallbackToDestructiveMigration().build().also { instance = it }
+            )
+                .addMigrations(MIGRATION_4_5)
+                .fallbackToDestructiveMigration()
+                .build().also { instance = it }
+        }
+
+        /** v3.1：custom_drugs 增加 withdrawalNote（戒断反应描述），增量迁移不丢数据 */
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE custom_drugs ADD COLUMN withdrawalNote TEXT")
+            }
         }
     }
 }

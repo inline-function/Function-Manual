@@ -38,6 +38,8 @@ data class CustomDrugEntity(
     val activeMetabolites: String? = null,
     /** 展示属性：分号分组 "name:from:to" */
     val attributes: String? = null,
+    /** v3.1：戒断反应描述（停药时的主观体验，资料页展示用） */
+    val withdrawalNote: String? = null,
 )
 
 /** 自定义药物的效应线：服用剂量超过阈值时施加权重 */

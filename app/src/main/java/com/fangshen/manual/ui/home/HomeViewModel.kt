@@ -186,7 +186,7 @@ class HomeViewModel(
         dose: DrugDoseInfo,
         drugList: List<DrugInfo>,
     ): List<DrugDoseInfo> = dose.drug.activeMetabolites.mapNotNull { meta ->
-        val entry = drugList.firstOrNull { it.id == "builtin:" + meta.key } ?: return@mapNotNull null
+        val entry = drugList.firstOrNull { it.id == meta.drugId() } ?: return@mapNotNull null
         val delayHours = meta.formationDelayHours ?: dose.drug.halfLifeHours.coerceIn(0.25, 24.0) * 0.25
         val time = dose.time + (delayHours * 3_600_000.0).toLong()
         if (time > System.currentTimeMillis()) return@mapNotNull null

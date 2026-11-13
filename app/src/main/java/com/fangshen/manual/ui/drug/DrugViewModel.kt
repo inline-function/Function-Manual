@@ -155,6 +155,20 @@ class DrugDetailViewModel(
             initialValue = emptyList(),
         )
 
+    /** v3.1：涉及本药的联用知识（内置机制配对 + 用户自定义配对，不依赖当前是否在服） */
+    val knowledge: StateFlow<List<com.fangshen.manual.engine.InteractionEngine.DrugKnowledge>> =
+        combine(
+            uiState,
+            getApplication<FangShenApplication>().contentRepository.state,
+        ) { drug, data ->
+            if (drug == null) emptyList()
+            else com.fangshen.manual.engine.InteractionEngine.knowledgeFor(drug, data.customInteractions)
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000L),
+            initialValue = emptyList(),
+        )
+
     fun delete(onDone: () -> Unit) {
         val drug = uiState.value ?: return
         if (drug.isBuiltin) return
@@ -206,6 +220,9 @@ data class DrugEditForm(
     val addictive: Boolean = false,
     val addictionRatePerHour: String = "",
     val toleranceGroup: String = "",
+    // v3.1：戒断反应描述；v3.1：可共享耐药组的候选药（药名 → 组名）
+    val withdrawalNote: String = "",
+    val shareCandidates: List<Pair<String, String>> = emptyList(),
     // v5：活性代谢物（引用内置键或 custom:id）
     val metabolites: List<MetaboliteRow> = emptyList(),
     // v5：展示属性（纯展示）
@@ -252,10 +269,18 @@ class DrugEditViewModel(
     init {
         viewModelScope.launch {
             val app = getApplication<FangShenApplication>()
-            val cands = app.drugRepository.drugs.first().map { d ->
-                ((if (d.isBuiltin) d.builtinKey else d.id) ?: d.id) to d.name
-            }
-            form.value = form.value.copy(candidates = cands)
+            val list = app.drugRepository.drugs.first()
+            val selfId = if (drugId.startsWith("custom:")) drugId else "builtin:" + drugId
+            form.value = form.value.copy(
+                candidates = list.map { d ->
+                    ((if (d.isBuiltin) d.builtinKey else d.id) ?: d.id) to d.name
+                },
+                // 可共享耐药组候选：已有耐药组的其他药（药名 → 组名），排除自己
+                shareCandidates = list
+                    .filter { it.id != selfId && !it.toleranceGroup.isNullOrBlank() }
+                    .map { it.name to it.toleranceGroup!! }
+                    .distinctBy { it.first },
+            )
         }
         if (drugId != "new") {
             viewModelScope.launch {
@@ -289,6 +314,7 @@ class DrugEditViewModel(
                         addictive = entity.addictive,
                         addictionRatePerHour = entity.addictionRatePerHour.toString(),
                         toleranceGroup = entity.toleranceGroup.orEmpty(),
+                        withdrawalNote = entity.withdrawalNote.orEmpty(),
                         metabolites = parseActiveMetabolites(entity.activeMetabolites).map {
                             MetaboliteRow(
                                 it.key,
@@ -355,6 +381,7 @@ class DrugEditViewModel(
                 addictive = f.addictive,
                 addictionRatePerHour = f.addictionRatePerHour.toDoubleOrNull() ?: 0.0,
                 toleranceGroup = f.toleranceGroup.trim().ifEmpty { null },
+                withdrawalNote = f.withdrawalNote.trim().ifEmpty { null },
                 activeMetabolites = f.metabolites
                     .filter { it.key.isNotBlank() && it.fmPct.toIntOrNull() != null }
                     .joinToString(";") { row ->

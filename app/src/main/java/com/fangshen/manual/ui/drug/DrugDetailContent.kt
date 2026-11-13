@@ -88,6 +88,14 @@ fun DrugDetailContent(drug: DrugInfo, modifier: Modifier = Modifier) {
                 InfoRow("生理成瘾性", "有")
                 InfoRow("游标移动速度", "${drug.addictionRatePerHour} /小时")
                 drug.toleranceGroup?.let { InfoRow("交叉耐药组", it) }
+                drug.withdrawalNote?.takeIf { it.isNotBlank() }?.let {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = "戒断反应：" + it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Text(
                     text = "成瘾游标线随给药持续向当前浓度移动；停药后低于临界值时将提示戒断风险。",
                     style = MaterialTheme.typography.bodySmall,

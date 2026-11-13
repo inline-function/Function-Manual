@@ -46,6 +46,7 @@ import com.fangshen.manual.model.SubjectiveTagColors
 import com.fangshen.manual.ui.components.ConfirmDialog
 import com.fangshen.manual.ui.components.EmptyState
 import com.fangshen.manual.ui.navigation.Routes
+import androidx.compose.material3.Surface
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -111,6 +112,7 @@ fun DrugDetailScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             InteractionWarningCards(viewModel = viewModel)
+            InteractionKnowledgeCards(viewModel = viewModel)
             DrugDetailContent(drug = d)
             if (!d.isBuiltin) {
                 OutlinedButton(
@@ -178,5 +180,79 @@ private fun InteractionWarningCards(viewModel: DrugDetailViewModel) {
                 Text(w.message, style = MaterialTheme.typography.bodySmall)
             }
         }
+    }
+}
+
+
+/** v3.1：联用知识——不依赖当前是否在服，凡涉及本药（标签或名称命中）的内置机制配对与
+ * 用户自定义配对都展示。两侧关键词渲染为圆角矩形标签卡片。 */
+@Composable
+private fun InteractionKnowledgeCards(viewModel: DrugDetailViewModel) {
+    val items by viewModel.knowledge.collectAsStateWithLifecycle()
+    if (items.isEmpty()) return
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        items.forEach { k ->
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFFFFF3E0),
+                    contentColor = Color(0xFF5D4037),
+                ),
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        val tint = Color(0xFFE65100)
+                        RoundedChip(k.chipA, tint)
+                        Text("与", style = MaterialTheme.typography.bodySmall)
+                        RoundedChip(k.chipB, tint)
+                    }
+                    Text(
+                        text = k.title,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = stripKnownPrefix(k.message, k.chipA, k.chipB),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
+        }
+    }
+}
+private fun stripKnownPrefix(message: String, chipA: String, chipB: String): String {
+    var m = message.trim()
+    for (pair in listOf(chipA to chipB, chipB to chipA)) {
+        val prefix = pair.first + " 与 " + pair.second + " 联用："
+        if (m.startsWith(prefix)) return m.removePrefix(prefix)
+    }
+    return m
+}
+
+/** 圆角矩形标签：关键词以卡片背景突出 */
+@Composable
+private fun RoundedChip(text: String, tint: Color) {
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = tint.copy(alpha = 0.12f),
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = tint,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+        )
     }
 }

@@ -94,6 +94,8 @@ data class DrugInfo(
     val addictionRatePerHour: Double = 0.0,
     /** 交叉耐药组：同组药物共享同一条成瘾游标线 */
     val toleranceGroup: String? = null,
+    /** v3.1：戒断反应描述（自定义药可填，资料页成瘾性一节展示） */
+    val withdrawalNote: String? = null,
     // —— v5 展示属性（不影响效应与药代引擎）——
     val attributes: List<DrugAttribute> = emptyList(),
     // —— v3 药代扩展（默认回退线性 Bateman，保持旧数据兼容）——
@@ -135,6 +137,7 @@ fun CustomDrugEntity.toDrugInfo(
     addictive = addictive,
     addictionRatePerHour = addictionRatePerHour,
     toleranceGroup = toleranceGroup,
+    withdrawalNote = withdrawalNote,
     activeMetabolites = parseActiveMetabolites(activeMetabolites),
     attributes = parseAttributes(attributes),
 )

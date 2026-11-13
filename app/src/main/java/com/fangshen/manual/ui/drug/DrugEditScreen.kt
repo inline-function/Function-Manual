@@ -37,6 +37,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -244,16 +246,76 @@ fun DrugEditScreen(
                         onValueChange = { v -> viewModel.update { it.copy(addictionRatePerHour = v) } },
                         label = { Text("游标移动速度（每小时）") },
                         singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         modifier = Modifier.weight(1f),
                     )
-                    OutlinedTextField(
-                        value = form.toleranceGroup,
-                        onValueChange = { v -> viewModel.update { it.copy(toleranceGroup = v) } },
-                        label = { Text("交叉耐药组（可空）") },
-                        singleLine = true,
-                        modifier = Modifier.weight(1.4f),
-                    )
+                    // 交叉耐药组：从"已有耐药组的药"里选一个，直接共享它的耐药组；
+                    // 不再要求手填组名（v3.1）
+                    var groupExpanded by remember { mutableStateOf(false) }
+                    val groupLabel = form.shareCandidates.firstOrNull { it.second == form.toleranceGroup }?.first
+                        ?: form.toleranceGroup.ifEmpty { "无（仅自身）" }
+                    Box(modifier = Modifier.weight(1.4f)) {
+                        OutlinedTextField(
+                            value = groupLabel,
+                            onValueChange = {},
+                            readOnly = true,
+                            enabled = false,
+                            label = { Text("交叉耐药组（共享谁的耐药性）") },
+                            singleLine = true,
+                            trailingIcon = {
+                                IconButton(onClick = { groupExpanded = !groupExpanded }) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.ArrowDropDown,
+                                        contentDescription = "选择共享耐药组的药",
+                                    )
+                                }
+                            },
+                            colors = TextFieldDefaults.colors(
+                                disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                                disabledContainerColor = Color.Transparent,
+                                disabledIndicatorColor = MaterialTheme.colorScheme.outline,
+                                disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            ),
+                            modifier = Modifier.fillMaxWidth().clickable { groupExpanded = true },
+                        )
+                        DropdownMenu(
+                            expanded = groupExpanded,
+                            onDismissRequest = { groupExpanded = false },
+                        ) {
+                            if (form.shareCandidates.isEmpty()) {
+                                DropdownMenuItem(
+                                    text = { Text("药库中暂无已声明耐药组的药") },
+                                    onClick = { groupExpanded = false },
+                                )
+                            }
+                            DropdownMenuItem(
+                                text = { Text("无（仅自身）") },
+                                onClick = {
+                                    viewModel.update { it.copy(toleranceGroup = "") }
+                                    groupExpanded = false
+                                },
+                            )
+                            form.shareCandidates.forEach { (name, group) ->
+                                DropdownMenuItem(
+                                    text = { Text("$name（共享「$group」）") },
+                                    onClick = {
+                                        viewModel.update { it.copy(toleranceGroup = group) }
+                                        groupExpanded = false
+                                    },
+                                )
+                            }
+                        }
+                    }
                 }
+                OutlinedTextField(
+                    value = form.withdrawalNote,
+                    onValueChange = { v -> viewModel.update { it.copy(withdrawalNote = v) } },
+                    label = { Text("戒断反应（停药时会出现什么）") },
+                    minLines = 2,
+                    maxLines = 4,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
 
             SectionTitle("活性代谢物")
@@ -268,28 +330,30 @@ fun DrugEditScreen(
                             .padding(12.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        var expanded by remember { mutableStateOf(false) }
-                        val candName = form.candidates.firstOrNull { it.first == row.key }?.second ?: row.key
+                        var metaExpanded by remember { mutableStateOf(false) }
                         Box {
                             OutlinedTextField(
-                                value = candName,
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text("引用药物") },
+                                value = row.key,
+                                onValueChange = { v -> viewModel.update { it.copy(metabolites = it.metabolites.toMutableList().also { list -> list[index] = list[index].copy(key = v) }) } },
+                                label = { Text("引用药物（内置键或 custom:id，可自定义）") },
                                 singleLine = true,
-                                trailingIcon = { Icon(Icons.Rounded.ArrowDropDown, contentDescription = null) },
-                                modifier = Modifier.fillMaxWidth().clickable { expanded = true },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
+                                trailingIcon = {
+                                    IconButton(onClick = { metaExpanded = true }) {
+                                        Icon(Icons.Rounded.ArrowDropDown, contentDescription = "从药库选择")
+                                    }
+                                },
                             )
                             DropdownMenu(
-                                expanded = expanded,
-                                onDismissRequest = { expanded = false },
+                                expanded = metaExpanded,
+                                onDismissRequest = { metaExpanded = false },
                             ) {
                                 form.candidates.forEach { (key, name) ->
                                     DropdownMenuItem(
                                         text = { Text(name) },
                                         onClick = {
                                             viewModel.update { it.copy(metabolites = it.metabolites.toMutableList().also { list -> list[index] = list[index].copy(key = key) }) }
-                                            expanded = false
+                                            metaExpanded = false
                                         },
                                     )
                                 }
