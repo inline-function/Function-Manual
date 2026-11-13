@@ -40,7 +40,23 @@ object AddictionEngine {
     /** 单药当前状态：C 为自身浓度，A 为所属游标线高度（mg/L 内部单位） */
     data class DrugState(val concentration: Double, val cursor: Double, val lineKey: String)
 
-    private const val STEP_H = 0.25
+    
+    /** 耐受"启动"门槛：窗口内需有 ≥ 此天数的不同服药日，游标才开始累积。
+     * 单次/偶发用药不产生耐受（群友 v3.0.0 反馈：佐匹克隆单次给药后游标几小时就追上浓度，
+     * 把次日残留效应"嗜睡"抹掉了）。 */
+    private const val PRIME_DAYS = 3
+
+    /** 事件是否满足启动门槛（按服药日去重计数） */
+    private fun primed(events: List<Ev>, now: Long): Boolean {
+        if (events.isEmpty()) return false
+        val days = HashSet<Long>()
+        for (e in events) {
+            val epoch = now + (e.t * 3_600_000.0).toLong()
+            days.add(epoch / 86_400_000L)
+        }
+        return days.size >= PRIME_DAYS
+    }
+private const val STEP_H = 0.25
     private const val MAX_HISTORY_H = 24.0 * 60.0
 
     /**
@@ -77,6 +93,8 @@ object AddictionEngine {
                 )
             }.sortedBy { it.t }
             if (events.isEmpty()) return@mapNotNull null
+            // 未达启动门槛：还没有耐受，不画游标线
+            if (!primed(events, now)) return@mapNotNull null
             val rate = members.maxOf { it.addictionRatePerHour.coerceAtLeast(0.0) }
             val trail = simulate(events, rate, xsHours, tMax)
             val head = members.first()
@@ -117,6 +135,8 @@ object AddictionEngine {
                 )
             }.sortedBy { it.t }
             if (events.isEmpty()) continue
+            // 未达启动门槛：单次/偶发用药不产生耐受，不参与调制
+            if (!primed(events, now)) continue
             val rate = members.maxOf { it.addictionRatePerHour.coerceAtLeast(0.0) }
             val trail = simulate(events, rate, listOf(-1.0, 0.0), 1.0)
             val a = interpolate(trail, 0.0)

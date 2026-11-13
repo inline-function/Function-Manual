@@ -137,11 +137,13 @@ object EffectEngine {
             }.maxOfOrNull { it.amount }
             var amount = if (recentSum > ZERO) recentSum else (midMax ?: ZERO)
             if (amount > ZERO) {
-                // 成瘾游标调制：换算剂量 = 原剂量 × |A−C| / A；浓度贴游标（耐受）→ 趋近 0
+                // 成瘾游标调制（仅连续用药达门槛者）：换算剂量 = 原剂量 × |A−C| / A；
+                // 浓度贴游标（耐受）→ 趋近 0；浓度远高于游标（未适应、首用敏感）→ 放大，但封顶 2 倍
                 val st = addictStates[drug.id]
                 if (st != null && st.cursor > 1e-9) {
-                    val ratio = kotlin.math.abs(st.concentration - st.cursor) / st.cursor
-                    amount = amount.multiply(java.math.BigDecimal.valueOf(ratio.toDouble()))
+                    val raw = kotlin.math.abs(st.concentration - st.cursor) / st.cursor
+                    val ratio = if (st.concentration > st.cursor) minOf(raw, 2.0) else raw
+                    amount = amount.multiply(java.math.BigDecimal.valueOf(ratio))
                     if (st.concentration < 0.5 * st.cursor) {
                         // 明显低于游标线：戒断反应加权
                         val w = (((st.cursor - st.concentration) / st.cursor) * 3.0).toInt().coerceAtLeast(1)
